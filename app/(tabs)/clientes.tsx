@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const db = SQLite.openDatabaseSync("prestamos.db");
 
@@ -111,14 +111,18 @@ export default function ClientesScreen() {
   };
 
   const confirmarEliminar = (id: number) => {
-    Alert.alert("Eliminar Cliente", "¿Estás seguro que deseas eliminar este cliente?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Eliminar",
-        onPress: () => eliminarCliente(id),
-        style: "destructive",
-      },
-    ]);
+    Alert.alert(
+      "Eliminar Cliente",
+      "¿Estás seguro que deseas eliminar este cliente?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          onPress: () => eliminarCliente(id),
+          style: "destructive",
+        },
+      ]
+    );
   };
 
   const cerrarModal = () => {
@@ -146,74 +150,77 @@ export default function ClientesScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-    <View style={styles.container}>
-      <TouchableOpacity
-        onPress={() => {
-          setEditingCliente(null);
-          setNombre("");
-          setTelefono("");
-          setNotas("");
-          setModalVisible(true);
-        }}
-        style={styles.button}
-      >
-        <Text style={styles.buttonText}>Agregar Cliente</Text>
-      </TouchableOpacity>
+      <View style={styles.container}>
+        <TouchableOpacity
+          onPress={() => {
+            setEditingCliente(null);
+            setNombre("");
+            setTelefono("");
+            setNotas("");
+            setModalVisible(true);
+          }}
+          style={styles.button}
+        >
+          <Text style={styles.buttonText}>Agregar Cliente</Text>
+        </TouchableOpacity>
 
-      <View style={styles.tableHeader}>
-        <Text style={styles.headerCellN}>#</Text>
-        <Text style={styles.headerCell}>Nombre</Text>
-        <Text style={styles.headerCellActions}>Acciones</Text>
-      </View>
+        <View style={styles.tableHeader}>
+          <Text style={styles.headerCellN}>#</Text>
+          <Text style={styles.headerCell}>Nombre</Text>
+          <Text style={styles.headerCellActions}>Acciones</Text>
+        </View>
 
-      <FlatList
-        data={clientes}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
-      />
+        <FlatList
+          data={clientes}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id.toString()}
+        />
 
-      <Modal visible={modalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>
-              {editingCliente ? "Editar Cliente" : "Nuevo Cliente"}
-            </Text>
-            <TextInput
-              placeholder="Nombre"
-              value={nombre}
-              onChangeText={setNombre}
-              style={styles.input}
-            />
-            <TextInput
-              placeholder="Teléfono"
-              value={telefono}
-              onChangeText={setTelefono}
-              style={styles.input}
-              keyboardType="phone-pad"
-            />
-            <TextInput
-              placeholder="Notas"
-              value={notas}
-              onChangeText={setNotas}
-              style={styles.input}
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                onPress={editingCliente ? actualizarCliente : agregarCliente}
-                style={styles.saveBtn}
-              >
-                <Text style={styles.buttonText}>
-                  {editingCliente ? "Actualizar" : "Guardar"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={cerrarModal} style={styles.cancelBtn}>
-                <Text style={styles.buttonText}>Cancelar</Text>
-              </TouchableOpacity>
+        <Modal visible={modalVisible} animationType="slide" transparent={true}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalTitle}>
+                {editingCliente ? "Editar Cliente" : "Nuevo Cliente"}
+              </Text>
+              <TextInput
+                placeholder="Nombre"
+                value={nombre}
+                onChangeText={setNombre}
+                style={styles.input}
+              />
+              <TextInput
+                placeholder="Teléfono"
+                value={telefono}
+                onChangeText={setTelefono}
+                style={styles.input}
+                keyboardType="phone-pad"
+              />
+              <TextInput
+                placeholder="Notas"
+                value={notas}
+                onChangeText={setNotas}
+                style={styles.input}
+              />
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  onPress={editingCliente ? actualizarCliente : agregarCliente}
+                  style={styles.saveBtn}
+                >
+                  <Text style={styles.buttonText}>
+                    {editingCliente ? "Actualizar" : "Guardar"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={cerrarModal}
+                  style={styles.cancelBtn}
+                >
+                  <Text style={styles.buttonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
     </SafeAreaView>
   );
 }
