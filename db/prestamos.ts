@@ -1,7 +1,7 @@
 // db/vacaciones.ts
 import { SQLiteDatabase } from "expo-sqlite";
 
-export async function openVacacionesDb(db: SQLiteDatabase) {
+export async function openPrestamosDb(db: SQLiteDatabase) {
   await db.execAsync("PRAGMA foreign_keys = ON;");
 
   await db.execAsync(`
@@ -42,5 +42,7 @@ export async function openVacacionesDb(db: SQLiteDatabase) {
             FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE,
             FOREIGN KEY (prestamo_id) REFERENCES prestamos(id) ON DELETE CASCADE
            );
+
+           
   `);
 }
