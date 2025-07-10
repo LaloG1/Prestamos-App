@@ -2,7 +2,7 @@ import { openPrestamosDb } from "@/db/prestamos";
 import { Picker } from "@react-native-picker/picker";
 import * as SQLite from "expo-sqlite";
 import { useEffect, useState } from "react";
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   Alert,
@@ -12,7 +12,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 const db = SQLite.openDatabaseSync("prestamos.db");
@@ -291,12 +291,24 @@ export default function PrestamosScreen() {
                 style={styles.input}
                 keyboardType="decimal-pad"
               />
-              <TextInput
-                placeholder="Estado"
-                value={estado}
-                onChangeText={setEstado}
-                style={styles.input}
-              />
+              {editingPrestamo ? (
+                <View style={styles.pickerContainer}>
+                  <Text style={styles.label}>Estado:</Text>
+                  <Picker
+                    selectedValue={estado}
+                    onValueChange={(itemValue) => setEstado(itemValue)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Pendiente" value="pendiente" />
+                    <Picker.Item label="Pagado" value="pagado" />
+                  </Picker>
+                </View>
+              ) : (
+                // Cuando agregas, ocultamos el campo y el estado queda "pendiente" fijo
+                <Text style={{ marginBottom: 12 }}>
+                  Estado: pendiente (por defecto)
+                </Text>
+              )}
               <TextInput
                 placeholder="Notas"
                 value={notas}
@@ -454,16 +466,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   pickerContainer: {
-    marginBottom: 12,
+    marginBottom: 1,
   },
   label: {
     fontWeight: "bold",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   picker: {
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
-    height: 40,
+    height: 55,
   },
 });
