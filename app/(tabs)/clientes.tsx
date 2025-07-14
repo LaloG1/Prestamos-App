@@ -126,6 +126,7 @@ export default function ClientesScreen() {
     setNombre("");
     setTelefono("");
     setNotas("");
+    setSearchText(""); // ← limpia el input
   };
 
   const openEditModal = (cliente: Cliente) => {
@@ -363,7 +364,11 @@ export default function ClientesScreen() {
                 </ScrollView>
               )}
               <TouchableOpacity
-                onPress={() => setModalClienteVisible(false)}
+                onPress={() => {
+                  setModalClienteVisible(false);
+                  setSearchText("");
+                  fetchClientes(""); // recarga todos
+                }}
                 style={[styles.button, { marginTop: 16 }]}
               >
                 <Text style={styles.buttonText}>Cerrar</Text>
