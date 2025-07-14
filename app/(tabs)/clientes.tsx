@@ -1,3 +1,4 @@
+// ClientesScreen.tsx
 import { openPrestamosDb } from "@/db/prestamos";
 import * as SQLite from "expo-sqlite";
 import { useEffect, useState } from "react";
@@ -5,13 +6,13 @@ import {
   Alert,
   FlatList,
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
-
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const db = SQLite.openDatabaseSync("prestamos.db");
@@ -28,8 +29,22 @@ interface Cliente {
 interface Prestamo {
   id: number;
   cliente_id: number;
+  monto: number;
   monto_original: number;
+  interes: number;
   estado: string;
+  notas?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface Pago {
+  id: number;
+  prestamo_id: number;
+  cliente_id: number;
+  monto: number;
+  tipo_pago: string;
+  fecha_pago: string;
 }
 
 export default function ClientesScreen() {
@@ -41,10 +56,12 @@ export default function ClientesScreen() {
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [searchText, setSearchText] = useState("");
 
-  // Estado para modal cliente seleccionado y sus préstamos
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [prestamosCliente, setPrestamosCliente] = useState<Prestamo[]>([]);
   const [modalClienteVisible, setModalClienteVisible] = useState(false);
+
+  const [detallePrestamo, setDetallePrestamo] = useState<Prestamo | null>(null);
+  const [historialPagos, setHistorialPagos] = useState<Pago[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -62,7 +79,6 @@ export default function ClientesScreen() {
         params.push(`%${filter}%`);
       }
       query += " ORDER BY created_at DESC";
-
       const result = await db.getAllAsync<Cliente>(query, params);
       setClientes(result);
     } catch (error) {
@@ -73,7 +89,7 @@ export default function ClientesScreen() {
   const fetchPrestamosCliente = async (clienteId: number) => {
     try {
       const prestamos = await db.getAllAsync<Prestamo>(
-        `SELECT id, cliente_id, monto_original, estado FROM prestamos WHERE cliente_id = ? ORDER BY created_at DESC`,
+        `SELECT * FROM prestamos WHERE cliente_id = ? ORDER BY created_at DESC`,
         [clienteId]
       );
       setPrestamosCliente(prestamos);
@@ -82,18 +98,53 @@ export default function ClientesScreen() {
     }
   };
 
+  const verDetallePrestamo = async (prestamoId: number) => {
+    try {
+      const result = await db.getFirstAsync<Prestamo>(
+        `SELECT * FROM prestamos WHERE id = ?`,
+        [prestamoId]
+      );
+      if (!result) {
+        Alert.alert("Error", "No se encontró el préstamo.");
+        return;
+      }
+      setDetallePrestamo(result);
+
+      const pagos = await db.getAllAsync<Pago>(
+        `SELECT * FROM pagos WHERE prestamo_id = ? ORDER BY fecha_pago DESC`,
+        [prestamoId]
+      );
+      setHistorialPagos(pagos);
+    } catch (error) {
+      console.log("Error al obtener detalle del préstamo:", error);
+    }
+  };
+
+  const cerrarModal = () => {
+    setModalVisible(false);
+    setEditingCliente(null);
+    setNombre("");
+    setTelefono("");
+    setNotas("");
+  };
+
+  const openEditModal = (cliente: Cliente) => {
+    setEditingCliente(cliente);
+    setNombre(cliente.nombre);
+    setTelefono(cliente.telefono);
+    setNotas(cliente.notas);
+    setModalVisible(true);
+  };
+
   const agregarCliente = async () => {
     if (!nombre.trim()) {
       Alert.alert("Error", "El nombre es obligatorio.");
       return;
     }
-
     const now = new Date().toISOString();
-
     try {
       await db.runAsync(
-        `INSERT INTO clientes (nombre, telefono, notas, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO clientes (nombre, telefono, notas, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
         [nombre, telefono, notas, now, now]
       );
       cerrarModal();
@@ -104,14 +155,8 @@ export default function ClientesScreen() {
   };
 
   const actualizarCliente = async () => {
-    if (!editingCliente) return;
-    if (!nombre.trim()) {
-      Alert.alert("Error", "El nombre es obligatorio.");
-      return;
-    }
-
+    if (!editingCliente || !nombre.trim()) return;
     const now = new Date().toISOString();
-
     try {
       await db.runAsync(
         `UPDATE clientes SET nombre = ?, telefono = ?, notas = ?, updated_at = ? WHERE id = ?`,
@@ -133,39 +178,15 @@ export default function ClientesScreen() {
     }
   };
 
-  const openEditModal = (cliente: Cliente) => {
-    setEditingCliente(cliente);
-    setNombre(cliente.nombre);
-    setTelefono(cliente.telefono);
-    setNotas(cliente.notas);
-    setModalVisible(true);
-  };
-
   const confirmarEliminar = (id: number) => {
-    Alert.alert(
-      "Eliminar Cliente",
-      "¿Estás seguro que deseas eliminar este cliente?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Eliminar",
-          onPress: () => eliminarCliente(id),
-          style: "destructive",
-        },
-      ]
-    );
+    Alert.alert("Eliminar Cliente", "¿Estás seguro que deseas eliminar este cliente?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Eliminar", onPress: () => eliminarCliente(id), style: "destructive" },
+    ]);
   };
 
-  const cerrarModal = () => {
-    setModalVisible(false);
-    setEditingCliente(null);
-    setNombre("");
-    setTelefono("");
-    setNotas("");
-  };
-
-  // Abrir modal cliente seleccionado con préstamos
   const openClienteModal = (cliente: Cliente) => {
+    setDetallePrestamo(null);
     setSelectedCliente(cliente);
     fetchPrestamosCliente(cliente.id);
     setModalClienteVisible(true);
@@ -178,10 +199,10 @@ export default function ClientesScreen() {
         <Text style={styles.cell}>{item.nombre}</Text>
         <View style={styles.actions}>
           <TouchableOpacity onPress={() => openEditModal(item)}>
-            <Text style={[styles.editBtn, { color: "#007bff" }]}>✏️</Text>
+            <Text style={styles.editBtn}>✏️</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => confirmarEliminar(item.id)}>
-            <Text style={[styles.deleteBtn, { color: "#dc3545" }]}>🗑️</Text>
+            <Text style={styles.deleteBtn}>🗑️</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -191,148 +212,133 @@ export default function ClientesScreen() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
-        <TouchableOpacity
-          onPress={() => {
-            setEditingCliente(null);
-            setNombre("");
-            setTelefono("");
-            setNotas("");
-            setModalVisible(true);
-          }}
-          style={styles.button}
-        >
+        <TouchableOpacity style={styles.button} onPress={() => setModalVisible(true)}>
           <Text style={styles.buttonText}>Agregar Cliente</Text>
         </TouchableOpacity>
 
-        <TextInput
-          placeholder="Buscar cliente por nombre"
-          value={searchText}
-          onChangeText={(text) => {
-            setSearchText(text);
-            fetchClientes(text);
-          }}
-          style={styles.searchInput}
-        />
-
-        <View style={styles.tableHeader}>
-          <Text style={styles.headerCellN}>#</Text>
-          <Text style={styles.headerCell}>Nombre</Text>
-          <Text style={styles.headerCellActions}>Acciones</Text>
-        </View>
-
         <FlatList
           data={clientes}
-          renderItem={renderItem}
           keyExtractor={(item) => item.id.toString()}
+          ListHeaderComponent={
+            <View style={styles.tableHeader}>
+              <Text style={styles.headerCellN}>#</Text>
+              <Text style={styles.headerCell}>Nombre</Text>
+              <Text style={styles.headerCellActions}>Acciones</Text>
+            </View>
+          }
+          renderItem={renderItem}
+          ListEmptyComponent={<Text style={{ marginTop: 20, textAlign: "center", color: "#666" }}>No hay clientes registrados.</Text>}
         />
 
-        {/* Modal para agregar/editar cliente */}
+        {/* Modal de detalle cliente + préstamos + pagos */}
+        <Modal visible={modalClienteVisible} animationType="slide" transparent={true}>
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalBox, { maxHeight: "85%" }]}>
+              {!detallePrestamo ? (
+                <ScrollView>
+                  <Text style={styles.modalTitle}>Cliente</Text>
+                  <Text style={styles.label}>Nombre:</Text>
+                  <Text style={styles.textInfo}>{selectedCliente?.nombre}</Text>
+                  <Text style={styles.label}>Teléfono:</Text>
+                  <Text style={styles.textInfo}>{selectedCliente?.telefono || "-"}</Text>
+                  <Text style={styles.label}>Notas:</Text>
+                  <Text style={styles.textInfo}>{selectedCliente?.notas || "-"}</Text>
+
+                  <Text style={[styles.modalTitle, { marginTop: 16 }]}>Préstamos</Text>
+                  <FlatList
+                    data={prestamosCliente}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => (
+                      <View style={[styles.row, { paddingVertical: 6 }]}>
+                        <Text style={[styles.cell, { flex: 2 }]}>${item.monto_original?.toFixed(2)}</Text>
+                        <Text style={[styles.cell, { flex: 1 }]}>{item.estado}</Text>
+                        <View style={[styles.actions, { flex: 1, justifyContent: "flex-start" }]}>
+                          <TouchableOpacity onPress={() => verDetallePrestamo(item.id)}>
+                            <Text style={{ fontSize: 18 }}>👁️</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                    ListEmptyComponent={<Text style={{ textAlign: "center", marginTop: 12, color: "#666" }}>No hay préstamos para este cliente.</Text>}
+                    style={{ maxHeight: 200 }}
+                  />
+                </ScrollView>
+              ) : (
+                <ScrollView>
+                  <Text style={styles.modalTitle}>Detalle del Préstamo</Text>
+                  <Text style={styles.label}>Monto Original:</Text>
+                  <Text style={styles.textInfo}>${detallePrestamo.monto_original?.toFixed(2) ?? "0.00"}</Text>
+                  <Text style={styles.label}>Monto Actualizado:</Text>
+                  <Text style={styles.textInfo}>${detallePrestamo.monto?.toFixed(2) ?? "0.00"}</Text>
+                  <Text style={styles.label}>Interés:</Text>
+                  <Text style={styles.textInfo}>{detallePrestamo.interes ?? 0}%</Text>
+                  <Text style={styles.label}>Estado:</Text>
+                  <Text style={styles.textInfo}>{detallePrestamo.estado}</Text>
+                  <Text style={styles.label}>Notas:</Text>
+                  <Text style={styles.textInfo}>{detallePrestamo.notas || "-"}</Text>
+
+                  <Text style={[styles.modalTitle, { marginTop: 16 }]}>Historial de Pagos</Text>
+                  {historialPagos.length === 0 ? (
+                    <Text style={{ color: "#666" }}>No hay pagos registrados aún.</Text>
+                  ) : (
+                    historialPagos.map((pago, index) => (
+                      <View key={pago.id} style={styles.row}>
+                        <Text style={styles.cell}>{index + 1}</Text>
+                        <Text style={styles.cell}>${pago.monto?.toFixed(2)}</Text>
+                        <Text style={styles.cell}>{pago.tipo_pago}</Text>
+                        <Text style={styles.cell}>{pago.fecha_pago}</Text>
+                      </View>
+                    ))
+                  )}
+                </ScrollView>
+              )}
+              <TouchableOpacity onPress={() => setModalClienteVisible(false)} style={[styles.button, { marginTop: 16 }]}>
+                <Text style={styles.buttonText}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal de agregar / editar cliente */}
         <Modal visible={modalVisible} animationType="slide" transparent={true}>
           <View style={styles.modalContainer}>
             <View style={styles.modalBox}>
               <Text style={styles.modalTitle}>
                 {editingCliente ? "Editar Cliente" : "Nuevo Cliente"}
               </Text>
+              <Text style={styles.label}>Nombre:</Text>
               <TextInput
-                placeholder="Nombre"
+                style={styles.input}
                 value={nombre}
                 onChangeText={setNombre}
-                style={styles.input}
+                placeholder="Nombre del cliente"
               />
+              <Text style={styles.label}>Teléfono:</Text>
               <TextInput
-                placeholder="Teléfono"
+                style={styles.input}
                 value={telefono}
                 onChangeText={setTelefono}
-                style={styles.input}
+                placeholder="Teléfono"
                 keyboardType="phone-pad"
               />
+              <Text style={styles.label}>Notas:</Text>
               <TextInput
-                placeholder="Notas"
+                style={styles.input}
                 value={notas}
                 onChangeText={setNotas}
-                style={styles.input}
+                placeholder="Notas"
               />
               <View style={styles.modalButtons}>
                 <TouchableOpacity
-                  onPress={editingCliente ? actualizarCliente : agregarCliente}
                   style={styles.saveBtn}
+                  onPress={editingCliente ? actualizarCliente : agregarCliente}
                 >
-                  <Text style={styles.buttonText}>
-                    {editingCliente ? "Actualizar" : "Guardar"}
-                  </Text>
+                  <Text style={styles.buttonText}>Guardar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={cerrarModal} style={styles.cancelBtn}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={cerrarModal}>
                   <Text style={styles.buttonText}>Cancelar</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          </View>
-        </Modal>
-
-        {/* Modal para mostrar cliente seleccionado y sus préstamos */}
-        <Modal
-          visible={modalClienteVisible}
-          animationType="slide"
-          transparent={true}
-        >
-          <View style={styles.modalContainer}>
-            <View style={[styles.modalBox, { maxHeight: "80%" }]}>
-              <Text style={styles.modalTitle}>Cliente</Text>
-
-              <Text style={styles.label}>Nombre:</Text>
-              <Text style={styles.textInfo}>{selectedCliente?.nombre}</Text>
-
-              <Text style={styles.label}>Teléfono:</Text>
-              <Text style={styles.textInfo}>{selectedCliente?.telefono || "-"}</Text>
-
-              <Text style={styles.label}>Notas:</Text>
-              <Text style={styles.textInfo}>{selectedCliente?.notas || "-"}</Text>
-
-              <Text style={[styles.modalTitle, { marginTop: 16 }]}>
-                Préstamos
-              </Text>
-
-              <View style={styles.tableHeader}>
-                <Text style={[styles.headerCell, { flex: 2 }]}>Monto Original</Text>
-                <Text style={[styles.headerCell, { flex: 1 }]}>Estado</Text>
-                <Text style={[styles.headerCellActions, { flex: 1 }]}>Acciones</Text>
-              </View>
-
-              <FlatList
-                data={prestamosCliente}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <View style={[styles.row, { paddingVertical: 6 }]}>
-                    <Text style={[styles.cell, { flex: 2 }]}>
-                      ${item.monto_original.toFixed(2)}
-                    </Text>
-                    <Text style={[styles.cell, { flex: 1 }]}>{item.estado}</Text>
-                    <View
-                      style={[
-                        styles.actions,
-                        { flex: 1, justifyContent: "flex-start" },
-                      ]}
-                    >
-                      {/* Aquí puedes agregar acciones en el futuro */}
-                    </View>
-                  </View>
-                )}
-                ListEmptyComponent={
-                  <Text
-                    style={{ textAlign: "center", marginTop: 12, color: "#666" }}
-                  >
-                    No hay préstamos para este cliente.
-                  </Text>
-                }
-                style={{ maxHeight: 200 }}
-              />
-
-              <TouchableOpacity
-                onPress={() => setModalClienteVisible(false)}
-                style={[styles.button, { marginTop: 16 }]}
-              >
-                <Text style={styles.buttonText}>Cerrar</Text>
-              </TouchableOpacity>
             </View>
           </View>
         </Modal>
