@@ -228,15 +228,25 @@ export default function ClientesScreen() {
           <Text style={styles.buttonText}>Agregar Cliente</Text>
         </TouchableOpacity>
 
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Buscar cliente por nombre..."
-          value={searchText}
-          onChangeText={(text) => {
-            setSearchText(text);
-            fetchClientes(text);
-          }}
-        />
+        <View style={styles.searchContainer}>
+          <TextInput
+            placeholder="Buscar cliente por nombre..."
+            value={searchText}
+            onChangeText={setSearchText}
+            onSubmitEditing={() => fetchClientes(searchText)}
+            style={styles.searchInput}
+          />
+          {searchText !== "" && (
+            <TouchableOpacity
+              onPress={() => {
+                setSearchText("");
+                fetchClientes();
+              }}
+            >
+              <Text style={styles.clearButton}>❌</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         <FlatList
           data={clientes}
@@ -284,6 +294,13 @@ export default function ClientesScreen() {
                   <FlatList
                     data={prestamosCliente}
                     keyExtractor={(item) => item.id.toString()}
+                    ListHeaderComponent={
+                      <View style={styles.tableHeader}>
+                        <Text style={styles.headerCellN}>Monto</Text>
+                        <Text style={styles.headerCell}>Estado</Text>
+                        <Text style={styles.headerCellActions}>Ver</Text>
+                      </View>
+                    }
                     renderItem={({ item }) => (
                       <View style={[styles.row, { paddingVertical: 6 }]}>
                         <Text style={[styles.cell, { flex: 2 }]}>
@@ -446,12 +463,22 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    gap: 8,
+  },
   searchInput: {
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
     padding: 10,
-    marginBottom: 16,
+    flex: 1,
+  },
+  clearButton: {
+    fontSize: 18,
+    marginLeft: 8,
   },
   tableHeader: {
     flexDirection: "row",
