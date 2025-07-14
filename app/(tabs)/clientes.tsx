@@ -1,4 +1,3 @@
-// ClientesScreen.tsx
 import { openPrestamosDb } from "@/db/prestamos";
 import * as SQLite from "expo-sqlite";
 import { useEffect, useState } from "react";
@@ -126,7 +125,7 @@ export default function ClientesScreen() {
     setNombre("");
     setTelefono("");
     setNotas("");
-    setSearchText(""); // ← limpia el input
+    setSearchText("");
   };
 
   const openEditModal = (cliente: Cliente) => {
@@ -266,7 +265,6 @@ export default function ClientesScreen() {
           }
         />
 
-        {/* Modal de detalle cliente + préstamos + pagos */}
         <Modal
           visible={modalClienteVisible}
           animationType="slide"
@@ -296,25 +294,26 @@ export default function ClientesScreen() {
                     keyExtractor={(item) => item.id.toString()}
                     ListHeaderComponent={
                       <View style={styles.tableHeader}>
-                        <Text style={styles.headerCellN}>Monto</Text>
-                        <Text style={styles.headerCell}>Estado</Text>
-                        <Text style={styles.headerCellActions}>Ver</Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>
+                          Monto
+                        </Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
+                          Estado
+                        </Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
+                          Ver
+                        </Text>
                       </View>
                     }
                     renderItem={({ item }) => (
                       <View style={[styles.row, { paddingVertical: 6 }]}>
-                        <Text style={[styles.cell, { flex: 2 }]}>
+                        <Text style={[styles.cellPrestamo, { flex: 2 }]}>
                           ${item.monto_original?.toFixed(2)}
                         </Text>
-                        <Text style={[styles.cell, { flex: 1 }]}>
+                        <Text style={[styles.cellPrestamo, { flex: 1 }]}>
                           {item.estado}
                         </Text>
-                        <View
-                          style={[
-                            styles.actions,
-                            { flex: 1, justifyContent: "flex-start" },
-                          ]}
-                        >
+                        <View style={[styles.actions, { flex: 1 }]}>
                           <TouchableOpacity
                             onPress={() => verDetallePrestamo(item.id)}
                           >
@@ -340,20 +339,25 @@ export default function ClientesScreen() {
               ) : (
                 <ScrollView>
                   <Text style={styles.modalTitle}>Detalle del Préstamo</Text>
+
                   <Text style={styles.label}>Monto Original:</Text>
                   <Text style={styles.textInfo}>
                     ${detallePrestamo.monto_original?.toFixed(2) ?? "0.00"}
                   </Text>
+
                   <Text style={styles.label}>Monto Actualizado:</Text>
                   <Text style={styles.textInfo}>
                     ${detallePrestamo.monto?.toFixed(2) ?? "0.00"}
                   </Text>
+
                   <Text style={styles.label}>Interés:</Text>
                   <Text style={styles.textInfo}>
                     {detallePrestamo.interes ?? 0}%
                   </Text>
+
                   <Text style={styles.label}>Estado:</Text>
                   <Text style={styles.textInfo}>{detallePrestamo.estado}</Text>
+
                   <Text style={styles.label}>Notas:</Text>
                   <Text style={styles.textInfo}>
                     {detallePrestamo.notas || "-"}
@@ -362,21 +366,44 @@ export default function ClientesScreen() {
                   <Text style={[styles.modalTitle, { marginTop: 16 }]}>
                     Historial de Pagos
                   </Text>
+
                   {historialPagos.length === 0 ? (
                     <Text style={{ color: "#666" }}>
                       No hay pagos registrados aún.
                     </Text>
                   ) : (
-                    historialPagos.map((pago, index) => (
-                      <View key={pago.id} style={styles.row}>
-                        <Text style={styles.cell}>{index + 1}</Text>
-                        <Text style={styles.cell}>
-                          ${pago.monto?.toFixed(2)}
+                    <>
+                      <View style={styles.tableHeader}>
+                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
+                          #
                         </Text>
-                        <Text style={styles.cell}>{pago.tipo_pago}</Text>
-                        <Text style={styles.cell}>{pago.fecha_pago}</Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>
+                          Monto
+                        </Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>
+                          Tipo
+                        </Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 3 }]}>
+                          Fecha
+                        </Text>
                       </View>
-                    ))
+                      {historialPagos.map((pago, index) => (
+                        <View key={pago.id} style={styles.row}>
+                          <Text style={[styles.cellPrestamo, { flex: 1 }]}>
+                            {index + 1}
+                          </Text>
+                          <Text style={[styles.cellPrestamo, { flex: 2 }]}>
+                            ${pago.monto?.toFixed(2)}
+                          </Text>
+                          <Text style={[styles.cellPrestamo, { flex: 2 }]}>
+                            {pago.tipo_pago}
+                          </Text>
+                          <Text style={[styles.cellPrestamo, { flex: 3 }]}>
+                            {pago.fecha_pago}
+                          </Text>
+                        </View>
+                      ))}
+                    </>
                   )}
                 </ScrollView>
               )}
@@ -384,59 +411,12 @@ export default function ClientesScreen() {
                 onPress={() => {
                   setModalClienteVisible(false);
                   setSearchText("");
-                  fetchClientes(""); // recarga todos
+                  fetchClientes("");
                 }}
                 style={[styles.button, { marginTop: 16 }]}
               >
                 <Text style={styles.buttonText}>Cerrar</Text>
               </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        {/* Modal de agregar / editar cliente */}
-        <Modal visible={modalVisible} animationType="slide" transparent={true}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalBox}>
-              <Text style={styles.modalTitle}>
-                {editingCliente ? "Editar Cliente" : "Nuevo Cliente"}
-              </Text>
-              <Text style={styles.label}>Nombre:</Text>
-              <TextInput
-                style={styles.input}
-                value={nombre}
-                onChangeText={setNombre}
-                placeholder="Nombre del cliente"
-              />
-              <Text style={styles.label}>Teléfono:</Text>
-              <TextInput
-                style={styles.input}
-                value={telefono}
-                onChangeText={setTelefono}
-                placeholder="Teléfono"
-                keyboardType="phone-pad"
-              />
-              <Text style={styles.label}>Notas:</Text>
-              <TextInput
-                style={styles.input}
-                value={notas}
-                onChangeText={setNotas}
-                placeholder="Notas"
-              />
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.saveBtn}
-                  onPress={editingCliente ? actualizarCliente : agregarCliente}
-                >
-                  <Text style={styles.buttonText}>Guardar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={cerrarModal}
-                >
-                  <Text style={styles.buttonText}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
             </View>
           </View>
         </Modal>
@@ -523,11 +503,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     textAlign: "center",
+    textAlignVertical: "center",
   },
   actions: {
     width: 80,
     flexDirection: "row",
     justifyContent: "center",
+    alignItems: "center",
     gap: 8,
   },
   editBtn: {
@@ -557,34 +539,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: "center",
   },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 12,
-  },
-  saveBtn: {
-    backgroundColor: "#28a745",
-    padding: 10,
-    borderRadius: 8,
-    flex: 1,
-    marginRight: 8,
-    alignItems: "center",
-  },
-  cancelBtn: {
-    backgroundColor: "#dc3545",
-    padding: 10,
-    borderRadius: 8,
-    flex: 1,
-    marginLeft: 8,
-    alignItems: "center",
-  },
   label: {
     fontWeight: "bold",
     marginTop: 8,
@@ -592,5 +546,15 @@ const styles = StyleSheet.create({
   textInfo: {
     fontSize: 16,
     marginBottom: 4,
+  },
+  headerCellPrestamo: {
+    fontWeight: "bold",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  cellPrestamo: {
+    fontSize: 14,
+    textAlign: "center",
+    textAlignVertical: "center",
   },
 });
