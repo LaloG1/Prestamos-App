@@ -66,7 +66,9 @@ export default function ClientesScreen() {
   const [mostrarFormularioPago, setMostrarFormularioPago] = useState(false);
   const [tipoPago, setTipoPago] = useState("interes");
   const [montoPago, setMontoPago] = useState("");
-  const [fechaPago, setFechaPago] = useState(new Date().toISOString().split("T")[0]);
+  const [fechaPago, setFechaPago] = useState(
+    new Date().toISOString().split("T")[0]
+  );
 
   useEffect(() => {
     (async () => {
@@ -245,7 +247,10 @@ export default function ClientesScreen() {
 
       if (tipoPago === "abono" || tipoPago === "liquidar") {
         nuevoMonto = Math.max(0, detallePrestamo.monto - monto);
-        nuevoEstado = tipoPago === "liquidar" || nuevoMonto === 0 ? "pagado" : detallePrestamo.estado;
+        nuevoEstado =
+          tipoPago === "liquidar" || nuevoMonto === 0
+            ? "pagado"
+            : detallePrestamo.estado;
 
         await db.runAsync(
           `UPDATE prestamos SET monto = ?, estado = ?, updated_at = ? WHERE id = ?`,
@@ -254,7 +259,11 @@ export default function ClientesScreen() {
       }
 
       // Actualizar estado local y limpiar formulario
-      setDetallePrestamo({ ...detallePrestamo, monto: nuevoMonto, estado: nuevoEstado });
+      setDetallePrestamo({
+        ...detallePrestamo,
+        monto: nuevoMonto,
+        estado: nuevoEstado,
+      });
       setMostrarFormularioPago(false);
       setMontoPago("");
       setTipoPago("interes");
@@ -378,7 +387,12 @@ export default function ClientesScreen() {
                 multiline
               />
 
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+              >
                 <TouchableOpacity
                   style={[styles.button, { flex: 1, marginRight: 8 }]}
                   onPress={editingCliente ? actualizarCliente : agregarCliente}
@@ -418,19 +432,31 @@ export default function ClientesScreen() {
                   <Text style={styles.label}>Nombre:</Text>
                   <Text style={styles.textInfo}>{selectedCliente?.nombre}</Text>
                   <Text style={styles.label}>Teléfono:</Text>
-                  <Text style={styles.textInfo}>{selectedCliente?.telefono || "-"}</Text>
+                  <Text style={styles.textInfo}>
+                    {selectedCliente?.telefono || "-"}
+                  </Text>
                   <Text style={styles.label}>Notas:</Text>
-                  <Text style={styles.textInfo}>{selectedCliente?.notas || "-"}</Text>
+                  <Text style={styles.textInfo}>
+                    {selectedCliente?.notas || "-"}
+                  </Text>
 
-                  <Text style={[styles.modalTitle, { marginTop: 16 }]}>Préstamos</Text>
+                  <Text style={[styles.modalTitle, { marginTop: 16 }]}>
+                    Préstamos
+                  </Text>
                   <FlatList
                     data={prestamosCliente}
                     keyExtractor={(item) => item.id.toString()}
                     ListHeaderComponent={
                       <View style={styles.tableHeader}>
-                        <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>Monto</Text>
-                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>Estado</Text>
-                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>Ver</Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>
+                          Monto
+                        </Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
+                          Estado
+                        </Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
+                          Ver
+                        </Text>
                       </View>
                     }
                     renderItem={({ item }) => (
@@ -438,7 +464,9 @@ export default function ClientesScreen() {
                         <Text style={[styles.cellPrestamo, { flex: 2 }]}>
                           ${item.monto_original?.toFixed(2)}
                         </Text>
-                        <Text style={[styles.cellPrestamo, { flex: 1 }]}>{item.estado}</Text>
+                        <Text style={[styles.cellPrestamo, { flex: 1 }]}>
+                          {item.estado}
+                        </Text>
                         <View style={[styles.actions, { flex: 1 }]}>
                           <TouchableOpacity
                             onPress={async () => {
@@ -452,7 +480,13 @@ export default function ClientesScreen() {
                       </View>
                     )}
                     ListEmptyComponent={
-                      <Text style={{ textAlign: "center", marginTop: 12, color: "#666" }}>
+                      <Text
+                        style={{
+                          textAlign: "center",
+                          marginTop: 12,
+                          color: "#666",
+                        }}
+                      >
                         No hay préstamos para este cliente.
                       </Text>
                     }
@@ -474,13 +508,17 @@ export default function ClientesScreen() {
                   </Text>
 
                   <Text style={styles.label}>Interés:</Text>
-                  <Text style={styles.textInfo}>{detallePrestamo.interes ?? 0}%</Text>
+                  <Text style={styles.textInfo}>
+                    {detallePrestamo.interes ?? 0}%
+                  </Text>
 
                   <Text style={styles.label}>Estado:</Text>
                   <Text style={styles.textInfo}>{detallePrestamo.estado}</Text>
 
                   <Text style={styles.label}>Notas:</Text>
-                  <Text style={styles.textInfo}>{detallePrestamo.notas || "-"}</Text>
+                  <Text style={styles.textInfo}>
+                    {detallePrestamo.notas || "-"}
+                  </Text>
 
                   {!mostrarFormularioPago && (
                     <TouchableOpacity
@@ -533,12 +571,18 @@ export default function ClientesScreen() {
                         style={styles.input}
                       />
 
-                      <TouchableOpacity style={styles.button} onPress={registrarPago}>
+                      <TouchableOpacity
+                        style={styles.button}
+                        onPress={registrarPago}
+                      >
                         <Text style={styles.buttonText}>Registrar</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.button, { backgroundColor: "#888", marginTop: 8 }]}
+                        style={[
+                          styles.button,
+                          { backgroundColor: "#888", marginTop: 8 },
+                        ]}
                         onPress={() => setMostrarFormularioPago(false)}
                       >
                         <Text style={styles.buttonText}>Cancelar</Text>
@@ -546,7 +590,9 @@ export default function ClientesScreen() {
                     </View>
                   )}
 
-                  <Text style={[styles.modalTitle, { marginTop: 24 }]}>Historial de Pagos</Text>
+                  <Text style={[styles.modalTitle, { marginTop: 24 }]}>
+                    Historial de Pagos
+                  </Text>
 
                   {historialPagos.length === 0 ? (
                     <Text style={{ color: "#666", textAlign: "center" }}>
@@ -555,19 +601,33 @@ export default function ClientesScreen() {
                   ) : (
                     <>
                       <View style={styles.tableHeader}>
-                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>#</Text>
-                        <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>Monto</Text>
-                        <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>Tipo</Text>
-                        <Text style={[styles.headerCellPrestamo, { flex: 3 }]}>Fecha</Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
+                          #
+                        </Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>
+                          Monto
+                        </Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>
+                          Tipo
+                        </Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 3 }]}>
+                          Fecha
+                        </Text>
                       </View>
                       {historialPagos.map((pago, index) => (
                         <View key={pago.id} style={styles.row}>
-                          <Text style={[styles.cellPrestamo, { flex: 1 }]}>{index + 1}</Text>
+                          <Text style={[styles.cellPrestamo, { flex: 1 }]}>
+                            {index + 1}
+                          </Text>
                           <Text style={[styles.cellPrestamo, { flex: 2 }]}>
                             ${pago.monto?.toFixed(2)}
                           </Text>
-                          <Text style={[styles.cellPrestamo, { flex: 2 }]}>{pago.tipo_pago}</Text>
-                          <Text style={[styles.cellPrestamo, { flex: 3 }]}>{pago.fecha_pago}</Text>
+                          <Text style={[styles.cellPrestamo, { flex: 2 }]}>
+                            {pago.tipo_pago}
+                          </Text>
+                          <Text style={[styles.cellPrestamo, { flex: 3 }]}>
+                            {pago.fecha_pago}
+                          </Text>
                         </View>
                       ))}
                     </>
@@ -577,15 +637,23 @@ export default function ClientesScreen() {
 
               <TouchableOpacity
                 onPress={() => {
-                  setModalClienteVisible(false);
-                  setDetallePrestamo(null);
-                  setMostrarFormularioPago(false);
-                  setSearchText("");
-                  fetchClientes("");
+                  if (detallePrestamo) {
+                    // Volver a la lista de préstamos del cliente
+                    setDetallePrestamo(null);
+                    setMostrarFormularioPago(false);
+                  } else {
+                    // Cerrar todo el modal de cliente
+                    setModalClienteVisible(false);
+                    setSelectedCliente(null);
+                    setSearchText("");
+                    fetchClientes("");
+                  }
                 }}
                 style={[styles.button, { marginTop: 16 }]}
               >
-                <Text style={styles.buttonText}>Cerrar</Text>
+                <Text style={styles.buttonText}>
+                  {detallePrestamo ? "Volver" : "Cerrar"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
