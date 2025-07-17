@@ -55,6 +55,7 @@ export default function ClientesScreen() {
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [searchText, setSearchText] = useState("");
 
+  // Estados para modal cliente / préstamo / historial
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [prestamosCliente, setPrestamosCliente] = useState<Prestamo[]>([]);
   const [modalClienteVisible, setModalClienteVisible] = useState(false);
@@ -62,7 +63,12 @@ export default function ClientesScreen() {
   const [detallePrestamo, setDetallePrestamo] = useState<Prestamo | null>(null);
   const [historialPagos, setHistorialPagos] = useState<Pago[]>([]);
 
-  // NUEVO: Control para mostrar formulario de pago
+  // Control de vistas internas del modal cliente
+  const [pantallaModal, setPantallaModal] = useState<
+    "cliente" | "detalle" | "historial"
+  >("cliente");
+
+  // Formulario pago
   const [mostrarFormularioPago, setMostrarFormularioPago] = useState(false);
   const [tipoPago, setTipoPago] = useState("interes");
   const [montoPago, setMontoPago] = useState("");
@@ -123,7 +129,8 @@ export default function ClientesScreen() {
       );
       setHistorialPagos(pagos);
 
-      setMostrarFormularioPago(false); // Al abrir detalle, ocultar formulario pago si estaba abierto
+      setMostrarFormularioPago(false);
+      setPantallaModal("detalle");
     } catch (error) {
       console.log("Error al obtener detalle del préstamo:", error);
     }
@@ -203,12 +210,17 @@ export default function ClientesScreen() {
     );
   };
 
+  // Aquí modificamos openClienteModal para resetear estado y abrir modal en vista cliente
   const openClienteModal = (cliente: Cliente) => {
-    setDetallePrestamo(null);
     setSelectedCliente(cliente);
     fetchPrestamosCliente(cliente.id);
+    setPantallaModal("cliente");
     setModalClienteVisible(true);
+    setDetallePrestamo(null);
+    setHistorialPagos([]);
+    setMostrarFormularioPago(false);
   };
+
   const registrarPago = async () => {
     if (!detallePrestamo) return;
 
@@ -226,7 +238,6 @@ export default function ClientesScreen() {
     try {
       const now = new Date().toISOString();
 
-      // Insertar nuevo pago en tabla pagos
       await db.runAsync(
         `INSERT INTO pagos (prestamo_id, cliente_id, monto, tipo_pago, fecha_pago, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -241,7 +252,6 @@ export default function ClientesScreen() {
         ]
       );
 
-      // Actualizar monto y estado del préstamo si es abono o liquidar
       let nuevoMonto = detallePrestamo.monto;
       let nuevoEstado = detallePrestamo.estado;
 
@@ -258,7 +268,6 @@ export default function ClientesScreen() {
         );
       }
 
-      // Actualizar estado local y limpiar formulario
       setDetallePrestamo({
         ...detallePrestamo,
         monto: nuevoMonto,
@@ -269,7 +278,6 @@ export default function ClientesScreen() {
       setTipoPago("interes");
       setFechaPago(new Date().toISOString().split("T")[0]);
 
-      // Refrescar historial de pagos
       const pagos = await db.getAllAsync<Pago>(
         `SELECT * FROM pagos WHERE prestamo_id = ? ORDER BY fecha_pago DESC`,
         [detallePrestamo.id]
@@ -413,20 +421,23 @@ export default function ClientesScreen() {
           </View>
         </Modal>
 
-        {/* Modal Cliente con detalle préstamo y formulario pago */}
+        {/* Modal Cliente con detalle préstamo e historial separados */}
         <Modal
           visible={modalClienteVisible}
           animationType="slide"
           transparent={true}
           onRequestClose={() => {
             setModalClienteVisible(false);
+            setSelectedCliente(null);
             setDetallePrestamo(null);
+            setHistorialPagos([]);
+            setPantallaModal("cliente");
             setMostrarFormularioPago(false);
           }}
         >
           <View style={styles.modalContainer}>
-            <View style={[styles.modalBox, { maxHeight: "85%" }]}>
-              {!detallePrestamo ? (
+            {pantallaModal === "cliente" && (
+              <View style={[styles.modalBox, { maxHeight: "85%" }]}>
                 <ScrollView>
                   <Text style={styles.modalTitle}>Cliente</Text>
                   <Text style={styles.label}>Nombre:</Text>
@@ -436,13 +447,9 @@ export default function ClientesScreen() {
                     {selectedCliente?.telefono || "-"}
                   </Text>
                   <Text style={styles.label}>Notas:</Text>
-                  <Text style={styles.textInfo}>
-                    {selectedCliente?.notas || "-"}
-                  </Text>
+                  <Text style={styles.textInfo}>{selectedCliente?.notas || "-"}</Text>
 
-                  <Text style={[styles.modalTitle, { marginTop: 16 }]}>
-                    Préstamos
-                  </Text>
+                  <Text style={[styles.modalTitle, { marginTop: 16 }]}>Préstamos</Text>
                   <FlatList
                     data={prestamosCliente}
                     keyExtractor={(item) => item.id.toString()}
@@ -454,9 +461,7 @@ export default function ClientesScreen() {
                         <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
                           Estado
                         </Text>
-                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
-                          Ver
-                        </Text>
+                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>Ver</Text>
                       </View>
                     }
                     renderItem={({ item }) => (
@@ -471,7 +476,6 @@ export default function ClientesScreen() {
                           <TouchableOpacity
                             onPress={async () => {
                               await verDetallePrestamo(item.id);
-                              setMostrarFormularioPago(false);
                             }}
                           >
                             <Text style={{ fontSize: 18 }}>👁️</Text>
@@ -481,11 +485,7 @@ export default function ClientesScreen() {
                     )}
                     ListEmptyComponent={
                       <Text
-                        style={{
-                          textAlign: "center",
-                          marginTop: 12,
-                          color: "#666",
-                        }}
+                        style={{ textAlign: "center", marginTop: 12, color: "#666" }}
                       >
                         No hay préstamos para este cliente.
                       </Text>
@@ -493,7 +493,25 @@ export default function ClientesScreen() {
                     style={{ maxHeight: 200 }}
                   />
                 </ScrollView>
-              ) : (
+
+                <TouchableOpacity
+                  style={[styles.button, { marginTop: 16 }]}
+                  onPress={() => {
+                    setModalClienteVisible(false);
+                    setSelectedCliente(null);
+                    setDetallePrestamo(null);
+                    setHistorialPagos([]);
+                    setPantallaModal("cliente");
+                    setMostrarFormularioPago(false);
+                  }}
+                >
+                  <Text style={styles.buttonText}>Cerrar</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {pantallaModal === "detalle" && detallePrestamo && (
+              <View style={[styles.modalBox, { maxHeight: "85%" }]}>
                 <ScrollView>
                   <Text style={styles.modalTitle}>Detalle del Préstamo</Text>
 
@@ -508,25 +526,30 @@ export default function ClientesScreen() {
                   </Text>
 
                   <Text style={styles.label}>Interés:</Text>
-                  <Text style={styles.textInfo}>
-                    {detallePrestamo.interes ?? 0}%
-                  </Text>
+                  <Text style={styles.textInfo}>{detallePrestamo.interes ?? 0}%</Text>
 
                   <Text style={styles.label}>Estado:</Text>
                   <Text style={styles.textInfo}>{detallePrestamo.estado}</Text>
 
                   <Text style={styles.label}>Notas:</Text>
-                  <Text style={styles.textInfo}>
-                    {detallePrestamo.notas || "-"}
-                  </Text>
+                  <Text style={styles.textInfo}>{detallePrestamo.notas || "-"}</Text>
 
                   {!mostrarFormularioPago && (
-                    <TouchableOpacity
-                      style={[styles.button, { marginTop: 16 }]}
-                      onPress={() => setMostrarFormularioPago(true)}
-                    >
-                      <Text style={styles.buttonText}>Realizar Pago</Text>
-                    </TouchableOpacity>
+                    <>
+                      <TouchableOpacity
+                        style={[styles.button, { marginTop: 16 }]}
+                        onPress={() => setMostrarFormularioPago(true)}
+                      >
+                        <Text style={styles.buttonText}>Realizar Pago</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.button, { marginTop: 8, backgroundColor: "#28a745" }]}
+                        onPress={() => setPantallaModal("historial")}
+                      >
+                        <Text style={styles.buttonText}>Historial de pagos</Text>
+                      </TouchableOpacity>
+                    </>
                   )}
 
                   {mostrarFormularioPago && (
@@ -571,91 +594,77 @@ export default function ClientesScreen() {
                         style={styles.input}
                       />
 
-                      <TouchableOpacity
-                        style={styles.button}
-                        onPress={registrarPago}
-                      >
+                      <TouchableOpacity style={styles.button} onPress={registrarPago}>
                         <Text style={styles.buttonText}>Registrar</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[
-                          styles.button,
-                          { backgroundColor: "#888", marginTop: 8 },
-                        ]}
+                        style={[styles.button, { backgroundColor: "#888", marginTop: 8 }]}
                         onPress={() => setMostrarFormularioPago(false)}
                       >
                         <Text style={styles.buttonText}>Cancelar</Text>
                       </TouchableOpacity>
                     </View>
                   )}
-
-                  <Text style={[styles.modalTitle, { marginTop: 24 }]}>
-                    Historial de Pagos
-                  </Text>
-
-                  {historialPagos.length === 0 ? (
-                    <Text style={{ color: "#666", textAlign: "center" }}>
-                      No hay pagos registrados aún.
-                    </Text>
-                  ) : (
-                    <>
-                      <View style={styles.tableHeader}>
-                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
-                          #
-                        </Text>
-                        <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>
-                          Monto
-                        </Text>
-                        <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>
-                          Tipo
-                        </Text>
-                        <Text style={[styles.headerCellPrestamo, { flex: 3 }]}>
-                          Fecha
-                        </Text>
-                      </View>
-                      {historialPagos.map((pago, index) => (
-                        <View key={pago.id} style={styles.row}>
-                          <Text style={[styles.cellPrestamo, { flex: 1 }]}>
-                            {index + 1}
-                          </Text>
-                          <Text style={[styles.cellPrestamo, { flex: 2 }]}>
-                            ${pago.monto?.toFixed(2)}
-                          </Text>
-                          <Text style={[styles.cellPrestamo, { flex: 2 }]}>
-                            {pago.tipo_pago}
-                          </Text>
-                          <Text style={[styles.cellPrestamo, { flex: 3 }]}>
-                            {pago.fecha_pago}
-                          </Text>
-                        </View>
-                      ))}
-                    </>
-                  )}
                 </ScrollView>
-              )}
 
-              <TouchableOpacity
-                onPress={() => {
-                  if (detallePrestamo) {
-                    // Volver a la lista de préstamos del cliente
+                <TouchableOpacity
+                  onPress={() => {
                     setDetallePrestamo(null);
                     setMostrarFormularioPago(false);
-                  } else {
-                    // Cerrar todo el modal de cliente
-                    setModalClienteVisible(false);
-                    setSelectedCliente(null);
-                    setSearchText("");
-                    fetchClientes("");
-                  }
-                }}
-                style={[styles.button, { marginTop: 16 }]}
-              >
-                <Text style={styles.buttonText}>
-                  {detallePrestamo ? "Volver" : "Cerrar"}
-                </Text>
-              </TouchableOpacity>
-            </View>
+                    setPantallaModal("cliente");
+                  }}
+                  style={[styles.button, { marginTop: 16 }]}
+                >
+                  <Text style={styles.buttonText}>Volver</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {pantallaModal === "historial" && (
+              <View style={[styles.modalBox, { maxHeight: "85%" }]}>
+                <Text style={styles.modalTitle}>Historial de Pagos</Text>
+                {historialPagos.length === 0 ? (
+                  <Text
+                    style={{ color: "#666", textAlign: "center", marginTop: 20 }}
+                  >
+                    No hay pagos registrados aún.
+                  </Text>
+                ) : (
+                  <ScrollView style={{ maxHeight: 300 }}>
+                    <View style={styles.tableHeader}>
+                      <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>#</Text>
+                      <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>Monto</Text>
+                      <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>Tipo</Text>
+                      <Text style={[styles.headerCellPrestamo, { flex: 3 }]}>Fecha</Text>
+                    </View>
+                    {historialPagos.map((pago, index) => (
+                      <View key={pago.id} style={styles.row}>
+                        <Text style={[styles.cellPrestamo, { flex: 1 }]}>
+                          {index + 1}
+                        </Text>
+                        <Text style={[styles.cellPrestamo, { flex: 2 }]}>
+                          ${pago.monto?.toFixed(2)}
+                        </Text>
+                        <Text style={[styles.cellPrestamo, { flex: 2 }]}>
+                          {pago.tipo_pago}
+                        </Text>
+                        <Text style={[styles.cellPrestamo, { flex: 3 }]}>
+                          {pago.fecha_pago}
+                        </Text>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.button, { marginTop: 16 }]}
+                  onPress={() => setPantallaModal("detalle")}
+                >
+                  <Text style={styles.buttonText}>Volver al detalle</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </Modal>
       </View>
@@ -665,142 +674,132 @@ export default function ClientesScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: "#fff",
+  flex: 1,
+  paddingHorizontal: 16,
+  paddingVertical: 8,
+  backgroundColor: '#fff',  // Agregado para fondo blanco
   },
   button: {
     backgroundColor: "#007bff",
-    padding: 12,
-    borderRadius: 8,
+    paddingVertical: 10,
+    borderRadius: 6,
     alignItems: "center",
-    marginBottom: 16,
   },
   buttonText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 16,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-    gap: 8,
-  },
-  searchInput: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 10,
-    flex: 1,
-  },
-  clearButton: {
-    fontSize: 18,
-    marginLeft: 8,
-  },
-  tableHeader: {
-    flexDirection: "row",
-    backgroundColor: "#f0f0f0",
-    paddingVertical: 8,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    paddingHorizontal: 4,
-  },
-  headerCellN: {
-    width: 40,
-    fontWeight: "bold",
-    fontSize: 14,
-    textAlign: "center",
-  },
-  headerCell: {
-    flex: 1,
-    fontWeight: "bold",
-    fontSize: 14,
-    textAlign: "center",
-  },
-  headerCellActions: {
-    width: 80,
-    fontWeight: "bold",
-    fontSize: 14,
-    textAlign: "center",
-  },
-  row: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    alignItems: "center",
-  },
-  cellN: {
-    width: 40,
-    fontSize: 14,
-    textAlign: "center",
-  },
-  cell: {
-    flex: 1,
-    fontSize: 14,
-    textAlign: "center",
-    textAlignVertical: "center",
-  },
-  actions: {
-    width: 80,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-  },
-  editBtn: {
-    fontSize: 18,
-    marginHorizontal: 4,
-  },
-  deleteBtn: {
-    fontSize: 18,
-    marginHorizontal: 4,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.3)",
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 20,
   },
   modalBox: {
     backgroundColor: "#fff",
-    padding: 24,
-    borderRadius: 12,
-    width: "90%",
+    borderRadius: 8,
+    padding: 16,
+    width: "100%",
     maxWidth: 400,
+    maxHeight: "90%",
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 16,
+    marginBottom: 12,
     textAlign: "center",
   },
   label: {
     fontWeight: "bold",
     marginTop: 8,
   },
-  textInfo: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  headerCellPrestamo: {
-    fontWeight: "bold",
-    fontSize: 14,
-    textAlign: "center",
-  },
-  cellPrestamo: {
-    fontSize: 14,
-    textAlign: "center",
-    textAlignVertical: "center",
-  },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginTop: 4,
+  },
+  row: {
+    flexDirection: "row",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderColor: "#eee",
+    alignItems: "center",
+  },
+  cellN: {
+    flex: 0.5,
+    textAlign: "center",
+  },
+  cell: {
+    flex: 3,
+  },
+  actions: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+  editBtn: {
+    fontSize: 18,
+    color: "#007bff",
+  },
+  deleteBtn: {
+    fontSize: 18,
+    color: "#dc3545",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    marginVertical: 10,
+    alignItems: "center",
+  },
+  searchInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  clearButton: {
+    marginLeft: 8,
+    fontSize: 18,
+  },
+  // Estilos para tabla préstamos e historial
+  tableHeader: {
+    flexDirection: "row",
+    backgroundColor: "#007bff",
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+  },
+  headerCellN: {
+    flex: 0.5,
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  headerCell: {
+    flex: 3,
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  headerCellActions: {
+    flex: 1,
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  headerCellPrestamo: {
+    color: "#fff",
+    fontWeight: "bold",
+    paddingHorizontal: 4,
+    textAlign: "center",
+  },
+  cellPrestamo: {
+    paddingHorizontal: 4,
+    textAlign: "center",
   },
   radioGroup: {
     flexDirection: "row",
@@ -808,12 +807,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   radio: {
-    padding: 10,
     borderWidth: 1,
     borderColor: "#007bff",
-    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
   },
   radioSelected: {
     backgroundColor: "#007bff",
+  },
+  textInfo: {
+    marginBottom: 8,
+    fontSize: 16,
   },
 });
