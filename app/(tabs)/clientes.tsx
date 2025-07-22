@@ -79,9 +79,9 @@ export default function ClientesScreen() {
   useEffect(() => {
     (async () => {
       await openPrestamosDb(db);
-      fetchClientes();
+      fetchClientes(searchText);
     })();
-  }, []);
+  }, [searchText]);
 
   const fetchClientes = async (filter: string = "") => {
     try {
@@ -438,10 +438,9 @@ export default function ClientesScreen() {
           <View style={styles.modalContainer}>
             {pantallaModal === "cliente" && (
               <View style={[styles.modalBox, { maxHeight: "85%" }]}>
-                <ScrollView>
-                  <Text style={styles.modalTitle}>Cliente</Text>
-                  <Text style={styles.label}>Nombre:</Text>
-                  <Text style={styles.textInfo}>{selectedCliente?.nombre}</Text>
+                <Text style={styles.modalTitle}>Cliente</Text>
+                <Text style={styles.label}>Nombre:</Text>
+                <Text style={styles.textInfo}>{selectedCliente?.nombre}</Text>
                   <Text style={styles.label}>Teléfono:</Text>
                   <Text style={styles.textInfo}>
                     {selectedCliente?.telefono || "-"}
@@ -492,7 +491,7 @@ export default function ClientesScreen() {
                     }
                     style={{ maxHeight: 200 }}
                   />
-                </ScrollView>
+                
 
                 <TouchableOpacity
                   style={[styles.button, { marginTop: 16 }]}
