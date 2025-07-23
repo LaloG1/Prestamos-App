@@ -54,14 +54,18 @@ export default function ClientesScreen() {
   const [notas, setNotas] = useState("");
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [searchText, setSearchText] = useState("");
-
+  const [detallePrestamo, setDetallePrestamo] = useState<Prestamo | null>(null);
+  const montoPrestamoActual = detallePrestamo?.monto ?? 0;
+  const interes = detallePrestamo?.interes ?? 0;
+  const interesEstimado = (montoPrestamoActual * interes) / 100;
+  
   // Estados para modal cliente / préstamo / historial
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [prestamosCliente, setPrestamosCliente] = useState<Prestamo[]>([]);
   const [modalClienteVisible, setModalClienteVisible] = useState(false);
 
-  const [detallePrestamo, setDetallePrestamo] = useState<Prestamo | null>(null);
   const [historialPagos, setHistorialPagos] = useState<Pago[]>([]);
+  const [mostrarVolver, setMostrarVolver] = useState(true);
 
   // Control de vistas internas del modal cliente
   const [pantallaModal, setPantallaModal] = useState<
@@ -72,6 +76,7 @@ export default function ClientesScreen() {
   const [mostrarFormularioPago, setMostrarFormularioPago] = useState(false);
   const [tipoPago, setTipoPago] = useState("interes");
   const [montoPago, setMontoPago] = useState("");
+  const [montoInteres, setMontoInteres] = useState(""); // Agregado para montoInteres
   const [fechaPago, setFechaPago] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -222,74 +227,62 @@ export default function ClientesScreen() {
   };
 
   const registrarPago = async () => {
-    if (!detallePrestamo) return;
+  if (!detallePrestamo) {
+    Alert.alert("Error", "No hay préstamo seleccionado.");
+    return;
+  }
 
-    if (!montoPago || !fechaPago) {
-      Alert.alert("Error", "Por favor completa todos los campos.");
-      return;
-    }
+  const interes = parseFloat(montoInteres);
+  const abono = parseFloat(montoPago);
+  const montoActualizado = detallePrestamo.monto || 0;
 
-    const monto = parseFloat(montoPago);
-    if (isNaN(monto) || monto <= 0) {
-      Alert.alert("Error", "El monto debe ser un número válido mayor a cero.");
-      return;
-    }
+  if (isNaN(interes) || isNaN(abono)) {
+    Alert.alert("Error", "Debe ingresar montos válidos.");
+    return;
+  }
 
-    try {
-      const now = new Date().toISOString();
+  if (interes > montoActualizado) {
+    Alert.alert(
+      "Error",
+      "El interés no puede ser mayor al monto actualizado del préstamo."
+    );
+    return;
+  }
 
-      await db.runAsync(
-        `INSERT INTO pagos (prestamo_id, cliente_id, monto, tipo_pago, fecha_pago, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          detallePrestamo.id,
-          detallePrestamo.cliente_id,
-          monto,
-          tipoPago,
-          fechaPago,
-          now,
-          now,
-        ]
-      );
+  try {
+    await openPrestamosDb(db);
+    const fechaActual = new Date().toISOString().split("T")[0];
 
-      let nuevoMonto = detallePrestamo.monto;
-      let nuevoEstado = detallePrestamo.estado;
+    await db.runAsync(
+      "INSERT INTO pagos (prestamo_id, cliente_id, monto, interes, fecha_pago) VALUES (?, ?, ?, ?, ?)",
+      [
+        detallePrestamo.id,
+        detallePrestamo.cliente_id,
+        abono,
+        interes,
+        fechaActual,
+      ]
+    );
 
-      if (tipoPago === "abono" || tipoPago === "liquidar") {
-        nuevoMonto = Math.max(0, detallePrestamo.monto - monto);
-        nuevoEstado =
-          tipoPago === "liquidar" || nuevoMonto === 0
-            ? "pagado"
-            : detallePrestamo.estado;
+    const nuevoMonto = montoActualizado - abono;
+    const nuevoEstado = nuevoMonto <= 0 ? "pagado" : "pendiente";
 
-        await db.runAsync(
-          `UPDATE prestamos SET monto = ?, estado = ?, updated_at = ? WHERE id = ?`,
-          [nuevoMonto, nuevoEstado, now, detallePrestamo.id]
-        );
-      }
+    await db.runAsync(
+      "UPDATE prestamos SET monto = ?, estado = ? WHERE id = ?",
+      [nuevoMonto, nuevoEstado, detallePrestamo.id]
+    );
 
-      setDetallePrestamo({
-        ...detallePrestamo,
-        monto: nuevoMonto,
-        estado: nuevoEstado,
-      });
-      setMostrarFormularioPago(false);
-      setMontoPago("");
-      setTipoPago("interes");
-      setFechaPago(new Date().toISOString().split("T")[0]);
+    Alert.alert("Éxito", "Pago registrado correctamente.");
+    setMontoPago("");
+    setMontoInteres("");
+    setModalClienteVisible(false);
+    // cargarDatos(); // actualizar pantalla
+  } catch (error) {
+    console.error("Error al registrar el pago:", error);
+    Alert.alert("Error", "Ocurrió un error al registrar el pago.");
+  }
+};
 
-      const pagos = await db.getAllAsync<Pago>(
-        `SELECT * FROM pagos WHERE prestamo_id = ? ORDER BY fecha_pago DESC`,
-        [detallePrestamo.id]
-      );
-      setHistorialPagos(pagos);
-
-      Alert.alert("Éxito", "Pago registrado correctamente.");
-    } catch (error) {
-      console.log("Error al registrar pago:", error);
-      Alert.alert("Error", "Ocurrió un error al registrar el pago.");
-    }
-  };
 
   const renderItem = ({ item, index }: { item: Cliente; index: number }) => (
     <TouchableOpacity onPress={() => openClienteModal(item)}>
@@ -441,57 +434,66 @@ export default function ClientesScreen() {
                 <Text style={styles.modalTitle}>Cliente</Text>
                 <Text style={styles.label}>Nombre:</Text>
                 <Text style={styles.textInfo}>{selectedCliente?.nombre}</Text>
-                  <Text style={styles.label}>Teléfono:</Text>
-                  <Text style={styles.textInfo}>
-                    {selectedCliente?.telefono || "-"}
-                  </Text>
-                  <Text style={styles.label}>Notas:</Text>
-                  <Text style={styles.textInfo}>{selectedCliente?.notas || "-"}</Text>
+                <Text style={styles.label}>Teléfono:</Text>
+                <Text style={styles.textInfo}>
+                  {selectedCliente?.telefono || "-"}
+                </Text>
+                <Text style={styles.label}>Notas:</Text>
+                <Text style={styles.textInfo}>
+                  {selectedCliente?.notas || "-"}
+                </Text>
 
-                  <Text style={[styles.modalTitle, { marginTop: 16 }]}>Préstamos</Text>
-                  <FlatList
-                    data={prestamosCliente}
-                    keyExtractor={(item) => item.id.toString()}
-                    ListHeaderComponent={
-                      <View style={styles.tableHeader}>
-                        <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>
-                          Monto
-                        </Text>
-                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
-                          Estado
-                        </Text>
-                        <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>Ver</Text>
-                      </View>
-                    }
-                    renderItem={({ item }) => (
-                      <View style={[styles.row, { paddingVertical: 6 }]}>
-                        <Text style={[styles.cellPrestamo, { flex: 2 }]}>
-                          ${item.monto_original?.toFixed(2)}
-                        </Text>
-                        <Text style={[styles.cellPrestamo, { flex: 1 }]}>
-                          {item.estado}
-                        </Text>
-                        <View style={[styles.actions, { flex: 1 }]}>
-                          <TouchableOpacity
-                            onPress={async () => {
-                              await verDetallePrestamo(item.id);
-                            }}
-                          >
-                            <Text style={{ fontSize: 18 }}>👁️</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    )}
-                    ListEmptyComponent={
-                      <Text
-                        style={{ textAlign: "center", marginTop: 12, color: "#666" }}
-                      >
-                        No hay préstamos para este cliente.
+                <Text style={[styles.modalTitle, { marginTop: 16 }]}>
+                  Préstamos
+                </Text>
+                <FlatList
+                  data={prestamosCliente}
+                  keyExtractor={(item) => item.id.toString()}
+                  ListHeaderComponent={
+                    <View style={styles.tableHeader}>
+                      <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>
+                        Monto
                       </Text>
-                    }
-                    style={{ maxHeight: 200 }}
-                  />
-                
+                      <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
+                        Estado
+                      </Text>
+                      <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
+                        Ver
+                      </Text>
+                    </View>
+                  }
+                  renderItem={({ item }) => (
+                    <View style={[styles.row, { paddingVertical: 6 }]}>
+                      <Text style={[styles.cellPrestamo, { flex: 2 }]}>
+                        ${item.monto_original?.toFixed(2)}
+                      </Text>
+                      <Text style={[styles.cellPrestamo, { flex: 1 }]}>
+                        {item.estado}
+                      </Text>
+                      <View style={[styles.actions, { flex: 1 }]}>
+                        <TouchableOpacity
+                          onPress={async () => {
+                            await verDetallePrestamo(item.id);
+                          }}
+                        >
+                          <Text style={{ fontSize: 18 }}>👁️</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                  ListEmptyComponent={
+                    <Text
+                      style={{
+                        textAlign: "center",
+                        marginTop: 12,
+                        color: "#666",
+                      }}
+                    >
+                      No hay préstamos para este cliente.
+                    </Text>
+                  }
+                  style={{ maxHeight: 200 }}
+                />
 
                 <TouchableOpacity
                   style={[styles.button, { marginTop: 16 }]}
@@ -514,24 +516,44 @@ export default function ClientesScreen() {
                 <ScrollView>
                   <Text style={styles.modalTitle}>Detalle del Préstamo</Text>
 
-                  <Text style={styles.label}>Monto Original:</Text>
-                  <Text style={styles.textInfo}>
-                    ${detallePrestamo.monto_original?.toFixed(2) ?? "0.00"}
-                  </Text>
+                  <View style={styles.row}>
+                    <View style={styles.column}>
+                      <Text style={styles.label}>Monto Original:</Text>
+                      <Text style={styles.textInfo}>
+                        ${detallePrestamo.monto_original?.toFixed(2) ?? "0.00"}
+                      </Text>
+                    </View>
+                    <View style={styles.column}>
+                      <Text style={styles.label}>Monto Actualizado:</Text>
+                      <Text style={styles.textInfo}>
+                        ${detallePrestamo.monto?.toFixed(2) ?? "0.00"}
+                      </Text>
+                    </View>
+                  </View>
 
-                  <Text style={styles.label}>Monto Actualizado:</Text>
-                  <Text style={styles.textInfo}>
-                    ${detallePrestamo.monto?.toFixed(2) ?? "0.00"}
-                  </Text>
+                  <View style={styles.row}>
+                    <View style={styles.column}>
+                      <Text style={styles.label}>Interés:</Text>
+                      <Text style={styles.textInfo}>
+                        {detallePrestamo.interes ?? 0}%
+                      </Text>
+                    </View>
+                    <View style={styles.column}>
+                      <Text style={styles.label}>Estado:</Text>
+                      <Text style={styles.textInfo}>
+                        {detallePrestamo.estado}
+                      </Text>
+                    </View>
+                  </View>
 
-                  <Text style={styles.label}>Interés:</Text>
-                  <Text style={styles.textInfo}>{detallePrestamo.interes ?? 0}%</Text>
-
-                  <Text style={styles.label}>Estado:</Text>
-                  <Text style={styles.textInfo}>{detallePrestamo.estado}</Text>
-
-                  <Text style={styles.label}>Notas:</Text>
-                  <Text style={styles.textInfo}>{detallePrestamo.notas || "-"}</Text>
+                  <View style={styles.row}>
+                    <View style={styles.columnFull}>
+                      <Text style={styles.label}>Notas:</Text>
+                      <Text style={styles.textInfo}>
+                        {detallePrestamo.notas || "-"}
+                      </Text>
+                    </View>
+                  </View>
 
                   {!mostrarFormularioPago && (
                     <>
@@ -543,10 +565,15 @@ export default function ClientesScreen() {
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.button, { marginTop: 8, backgroundColor: "#28a745" }]}
+                        style={[
+                          styles.button,
+                          { marginTop: 8, backgroundColor: "#28a745" },
+                        ]}
                         onPress={() => setPantallaModal("historial")}
                       >
-                        <Text style={styles.buttonText}>Historial de pagos</Text>
+                        <Text style={styles.buttonText}>
+                          Historial de pagos
+                        </Text>
                       </TouchableOpacity>
                     </>
                   )}
@@ -579,11 +606,13 @@ export default function ClientesScreen() {
                       </View>
 
                       <TextInput
-                        placeholder="Monto"
+                        style={styles.input}
                         keyboardType="numeric"
                         value={montoPago}
                         onChangeText={setMontoPago}
-                        style={styles.input}
+                        placeholder={`interés: $${interesEstimado.toFixed(
+                          2
+                        )}`}
                       />
 
                       <TextInput
@@ -593,12 +622,18 @@ export default function ClientesScreen() {
                         style={styles.input}
                       />
 
-                      <TouchableOpacity style={styles.button} onPress={registrarPago}>
+                      <TouchableOpacity
+                        style={styles.button}
+                        onPress={registrarPago}
+                      >
                         <Text style={styles.buttonText}>Registrar</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        style={[styles.button, { backgroundColor: "#888", marginTop: 8 }]}
+                        style={[
+                          styles.button,
+                          { backgroundColor: "#888", marginTop: 8 },
+                        ]}
                         onPress={() => setMostrarFormularioPago(false)}
                       >
                         <Text style={styles.buttonText}>Cancelar</Text>
@@ -625,17 +660,29 @@ export default function ClientesScreen() {
                 <Text style={styles.modalTitle}>Historial de Pagos</Text>
                 {historialPagos.length === 0 ? (
                   <Text
-                    style={{ color: "#666", textAlign: "center", marginTop: 20 }}
+                    style={{
+                      color: "#666",
+                      textAlign: "center",
+                      marginTop: 20,
+                    }}
                   >
                     No hay pagos registrados aún.
                   </Text>
                 ) : (
                   <ScrollView style={{ maxHeight: 300 }}>
                     <View style={styles.tableHeader}>
-                      <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>#</Text>
-                      <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>Monto</Text>
-                      <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>Tipo</Text>
-                      <Text style={[styles.headerCellPrestamo, { flex: 3 }]}>Fecha</Text>
+                      <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
+                        #
+                      </Text>
+                      <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>
+                        Monto
+                      </Text>
+                      <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>
+                        Tipo
+                      </Text>
+                      <Text style={[styles.headerCellPrestamo, { flex: 3 }]}>
+                        Fecha
+                      </Text>
                     </View>
                     {historialPagos.map((pago, index) => (
                       <View key={pago.id} style={styles.row}>
@@ -673,10 +720,10 @@ export default function ClientesScreen() {
 
 const styles = StyleSheet.create({
   container: {
-  flex: 1,
-  paddingHorizontal: 16,
-  paddingVertical: 8,
-  backgroundColor: '#fff',  // Agregado para fondo blanco
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#fff", // Agregado para fondo blanco
   },
   button: {
     backgroundColor: "#007bff",
@@ -712,6 +759,8 @@ const styles = StyleSheet.create({
   label: {
     fontWeight: "bold",
     marginTop: 8,
+    fontSize: 14,
+    color: "#333",
   },
   input: {
     borderWidth: 1,
@@ -727,6 +776,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: "#eee",
     alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
   },
   cellN: {
     flex: 0.5,
@@ -818,5 +869,13 @@ const styles = StyleSheet.create({
   textInfo: {
     marginBottom: 8,
     fontSize: 16,
+    color: "#666",
+  },
+  columnFull: {
+    flex: 1,
+  },
+  column: {
+    flex: 1,
+    paddingRight: 10,
   },
 });
