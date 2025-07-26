@@ -58,7 +58,7 @@ export default function ClientesScreen() {
   const montoPrestamoActual = detallePrestamo?.monto ?? 0;
   const interes = detallePrestamo?.interes ?? 0;
   const interesEstimado = (montoPrestamoActual * interes) / 100;
-  
+
   // Estados para modal cliente / préstamo / historial
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [prestamosCliente, setPrestamosCliente] = useState<Prestamo[]>([]);
@@ -76,6 +76,19 @@ export default function ClientesScreen() {
   const [mostrarFormularioPago, setMostrarFormularioPago] = useState(false);
   const [tipoPago, setTipoPago] = useState("interes");
   const [montoPago, setMontoPago] = useState("");
+  const [montoActualizado, setMontoActualizado] = useState<number>(0);
+
+  useEffect(() => {
+    if (tipoPago === "interes") {
+      const interes = Number(interesEstimado);
+      setMontoPago(isNaN(interes) ? "" : interes.toFixed(2));
+    } else if (tipoPago === "liquidar") {
+      setMontoPago(montoActualizado.toFixed(2));
+    } else {
+      setMontoPago("");
+    }
+  }, [tipoPago, interesEstimado, montoActualizado]);
+
   const [montoInteres, setMontoInteres] = useState(""); // Agregado para montoInteres
   const [fechaPago, setFechaPago] = useState(
     new Date().toISOString().split("T")[0]
@@ -227,62 +240,67 @@ export default function ClientesScreen() {
   };
 
   const registrarPago = async () => {
-  if (!detallePrestamo) {
-    Alert.alert("Error", "No hay préstamo seleccionado.");
-    return;
-  }
+    if (!detallePrestamo) {
+      Alert.alert("Error", "No hay préstamo seleccionado.");
+      return;
+    }
 
-  const interes = parseFloat(montoInteres);
-  const abono = parseFloat(montoPago);
-  const montoActualizado = detallePrestamo.monto || 0;
+    const montoActualizado = detallePrestamo.monto || 0;
+    const monto = parseFloat(montoPago);
 
-  if (isNaN(interes) || isNaN(abono)) {
-    Alert.alert("Error", "Debe ingresar montos válidos.");
-    return;
-  }
+    if (isNaN(monto) || monto <= 0) {
+      Alert.alert("Error", "Debe ingresar un monto válido.");
+      return;
+    }
 
-  if (interes > montoActualizado) {
-    Alert.alert(
-      "Error",
-      "El interés no puede ser mayor al monto actualizado del préstamo."
-    );
-    return;
-  }
+    if (tipoPago !== "interes" && monto > montoActualizado) {
+      Alert.alert(
+        "Error",
+        `El monto no puede ser mayor al monto actualizado: $${montoActualizado.toFixed(
+          2
+        )}.`
+      );
+      return;
+    }
 
-  try {
-    await openPrestamosDb(db);
     const fechaActual = new Date().toISOString().split("T")[0];
 
-    await db.runAsync(
-      "INSERT INTO pagos (prestamo_id, cliente_id, monto, interes, fecha_pago) VALUES (?, ?, ?, ?, ?)",
-      [
-        detallePrestamo.id,
-        detallePrestamo.cliente_id,
-        abono,
-        interes,
-        fechaActual,
-      ]
-    );
+    try {
+      await openPrestamosDb(db);
 
-    const nuevoMonto = montoActualizado - abono;
-    const nuevoEstado = nuevoMonto <= 0 ? "pagado" : "pendiente";
+      // Registrar el pago
+      await db.runAsync(
+        `INSERT INTO pagos (prestamo_id, cliente_id, monto, tipo_pago, fecha_pago)
+       VALUES (?, ?, ?, ?, ?)`,
+        [
+          detallePrestamo.id,
+          detallePrestamo.cliente_id,
+          monto,
+          tipoPago,
+          fechaActual,
+        ]
+      );
 
-    await db.runAsync(
-      "UPDATE prestamos SET monto = ?, estado = ? WHERE id = ?",
-      [nuevoMonto, nuevoEstado, detallePrestamo.id]
-    );
+      // Solo actualizar monto si el tipo de pago es abono o liquidar
+      if (tipoPago === "abono" || tipoPago === "liquidar") {
+        const nuevoMonto =
+          tipoPago === "liquidar" ? 0 : montoActualizado - monto;
+        const nuevoEstado = nuevoMonto <= 0 ? "pagado" : "pendiente";
 
-    Alert.alert("Éxito", "Pago registrado correctamente.");
-    setMontoPago("");
-    setMontoInteres("");
-    setModalClienteVisible(false);
-    // cargarDatos(); // actualizar pantalla
-  } catch (error) {
-    console.error("Error al registrar el pago:", error);
-    Alert.alert("Error", "Ocurrió un error al registrar el pago.");
-  }
-};
+        await db.runAsync(
+          `UPDATE prestamos SET monto = ?, estado = ? WHERE id = ?`,
+          [nuevoMonto, nuevoEstado, detallePrestamo.id]
+        );
+      }
 
+      Alert.alert("Éxito", "Pago registrado correctamente.");
+      setMontoPago("");
+      setModalClienteVisible(false);
+    } catch (error) {
+      console.error("Error al registrar el pago:", error);
+      Alert.alert("Error", "Ocurrió un error al registrar el pago.");
+    }
+  };
 
   const renderItem = ({ item, index }: { item: Cliente; index: number }) => (
     <TouchableOpacity onPress={() => openClienteModal(item)}>
@@ -586,7 +604,16 @@ export default function ClientesScreen() {
                         {["interes", "abono", "liquidar"].map((tipo) => (
                           <TouchableOpacity
                             key={tipo}
-                            onPress={() => setTipoPago(tipo)}
+                            onPress={() => {
+                              setTipoPago(tipo);
+                              if (tipo === "liquidar") {
+                                setMontoPago(montoActualizado.toString());
+                              } else if (tipo === "interes") {
+                                setMontoPago(""); // o puedes poner `interesEstimado.toString()` si prefieres
+                              } else {
+                                setMontoPago("");
+                              }
+                            }}
                             style={[
                               styles.radio,
                               tipoPago === tipo && styles.radioSelected,
@@ -610,9 +637,18 @@ export default function ClientesScreen() {
                         keyboardType="numeric"
                         value={montoPago}
                         onChangeText={setMontoPago}
-                        placeholder={`interés: $${interesEstimado.toFixed(
-                          2
-                        )}`}
+                        editable={tipoPago !== "liquidar"} // ❗ Solo editable si NO es "liquidar"
+                        placeholder={
+                          tipoPago === "interes"
+                            ? `interés: $${Number(interesEstimado).toFixed(2)}`
+                            : tipoPago === "liquidar"
+                            ? isNaN(Number(montoActualizado))
+                              ? "Monto a liquidar no disponible"
+                              : `Monto a liquidar: $${Number(
+                                  montoActualizado
+                                ).toFixed(2)}`
+                            : "Ingresa un monto"
+                        }
                       />
 
                       <TextInput
