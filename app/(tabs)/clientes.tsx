@@ -58,6 +58,7 @@ export default function ClientesScreen() {
   const montoPrestamoActual = detallePrestamo?.monto ?? 0;
   const interes = detallePrestamo?.interes ?? 0;
   const interesEstimado = (montoPrestamoActual * interes) / 100;
+  const [listaPrestamos, setListaPrestamos] = useState<Prestamo[]>([]);
 
   // Estados para modal cliente / préstamo / historial
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
@@ -249,77 +250,92 @@ export default function ClientesScreen() {
   };
 
   const registrarPago = async () => {
-  if (!detallePrestamo) {
-    Alert.alert("Error", "No hay préstamo seleccionado.");
-    return;
-  }
+    if (!detallePrestamo) {
+      Alert.alert("Error", "No hay préstamo seleccionado.");
+      return;
+    }
 
-  const monto = parseFloat(montoPago);
+    const monto = parseFloat(montoPago);
 
-  if (isNaN(monto) || monto <= 0) {
-    Alert.alert("Error", "Debe ingresar un monto válido.");
-    return;
-  }
+    if (isNaN(monto) || monto <= 0) {
+      Alert.alert("Error", "Debe ingresar un monto válido.");
+      return;
+    }
 
-  if (tipoPago !== "interes" && monto > montoActualizado) {
-    Alert.alert(
-      "Error",
-      `El monto no puede ser mayor al monto actualizado: $${montoActualizado.toFixed(
-        2
-      )}.`
-    );
-    return;
-  }
-
-  const fechaActual = new Date().toISOString().split("T")[0];
-
-  try {
-    await openPrestamosDb(db);
-
-    // Registrar el pago
-    await db.runAsync(
-      `INSERT INTO pagos (prestamo_id, cliente_id, monto, tipo_pago, fecha_pago)
-       VALUES (?, ?, ?, ?, ?)`,
-      [detallePrestamo.id, detallePrestamo.cliente_id, monto, tipoPago, fechaActual]
-    );
-
-    // Solo actualizar monto si el tipo de pago es abono o liquidar
-    if (tipoPago === "abono" || tipoPago === "liquidar") {
-      const nuevoMonto = tipoPago === "liquidar" ? 0 : montoActualizado - monto;
-      const nuevoEstado = nuevoMonto <= 0 ? "pagado" : "pendiente";
-
-      await db.runAsync(
-        `UPDATE prestamos SET monto = ?, estado = ? WHERE id = ?`,
-        [nuevoMonto, nuevoEstado, detallePrestamo.id]
+    if (tipoPago !== "interes" && monto > montoActualizado) {
+      Alert.alert(
+        "Error",
+        `El monto no puede ser mayor al monto actualizado: $${montoActualizado.toFixed(
+          2
+        )}.`
       );
+      return;
     }
 
-    // Recargar pagos y detalle del préstamo actualizado
-    const pagosActualizados = (await db.getAllAsync(
-      `SELECT * FROM pagos WHERE prestamo_id = ? ORDER BY fecha_pago DESC`,
-      [detallePrestamo.id]
-    )) as Pago[];
+    const fechaActual = new Date().toISOString().split("T")[0];
 
-    const prestamoActualizado = await db.getFirstAsync<Prestamo | null>(
-      `SELECT * FROM prestamos WHERE id = ?`,
-      [detallePrestamo.id]
-    );
+    try {
+      await openPrestamosDb(db);
 
-    // Actualizar estado local para refrescar UI
-    setHistorialPagos(pagosActualizados);
-    if (prestamoActualizado) {
-      setDetallePrestamo(prestamoActualizado);
+      // Insertar el nuevo pago
+      await db.runAsync(
+        `INSERT INTO pagos (prestamo_id, cliente_id, monto, tipo_pago, fecha_pago)
+       VALUES (?, ?, ?, ?, ?)`,
+        [
+          detallePrestamo.id,
+          detallePrestamo.cliente_id,
+          monto,
+          tipoPago,
+          fechaActual,
+        ]
+      );
+
+      let nuevoMonto = montoActualizado;
+      let nuevoEstado = detallePrestamo.estado;
+
+      if (tipoPago === "abono" || tipoPago === "liquidar") {
+        nuevoMonto = tipoPago === "liquidar" ? 0 : montoActualizado - monto;
+        nuevoEstado = nuevoMonto <= 0 ? "pagado" : "pendiente";
+
+        await db.runAsync(
+          `UPDATE prestamos SET monto = ?, estado = ? WHERE id = ?`,
+          [nuevoMonto, nuevoEstado, detallePrestamo.id]
+        );
+      }
+
+      // Recargar historial de pagos
+      const pagosActualizados: Pago[] = await db.getAllAsync<Pago>(
+        `SELECT * FROM pagos WHERE prestamo_id = ? ORDER BY fecha_pago DESC`,
+        [detallePrestamo.id]
+      );
+
+      // Obtener préstamo actualizado
+      const prestamoActualizado = await db.getFirstAsync<Prestamo | null>(
+        `SELECT * FROM prestamos WHERE id = ?`,
+        [detallePrestamo.id]
+      );
+
+      // Actualizar estado local del detalle
+      if (prestamoActualizado) {
+        setDetallePrestamo(prestamoActualizado);
+
+        // 🔄 Actualizar el listado general del modal de clientes
+        setPrestamosCliente((prev) =>
+          prev.map((p) =>
+            p.id === prestamoActualizado.id ? prestamoActualizado : p
+          )
+        );
+      }
+
+      setHistorialPagos(pagosActualizados);
+      setMontoPago("");
+      setMostrarFormularioPago(false);
+      Alert.alert("Éxito", "Pago registrado correctamente.");
+    } catch (error) {
+      console.error("Error al registrar el pago:", error);
+      Alert.alert("Error", "Ocurrió un error al registrar el pago.");
     }
-
-    Alert.alert("Éxito", "Pago registrado correctamente.");
-    setMontoPago("");
-    setMostrarFormularioPago(false);
-  } catch (error) {
-    console.error("Error al registrar el pago:", error);
-    Alert.alert("Error", "Ocurrió un error al registrar el pago.");
-  }
-};
-
+  };
 
   const renderItem = ({ item, index }: { item: Cliente; index: number }) => (
     <TouchableOpacity onPress={() => openClienteModal(item)}>
@@ -759,7 +775,7 @@ export default function ClientesScreen() {
                         Fecha
                       </Text>
                     </View>
-                    {historialPagos.map((pago, index) => (
+                    {[...historialPagos].reverse().map((pago, index) => (
                       <View key={pago.id} style={styles.row}>
                         <Text style={[styles.cellPrestamo, { flex: 1 }]}>
                           {historialPagos.length - index}
