@@ -249,67 +249,77 @@ export default function ClientesScreen() {
   };
 
   const registrarPago = async () => {
-    if (!detallePrestamo) {
-      Alert.alert("Error", "No hay préstamo seleccionado.");
-      return;
-    }
+  if (!detallePrestamo) {
+    Alert.alert("Error", "No hay préstamo seleccionado.");
+    return;
+  }
 
-    /* const montoActualizado = detallePrestamo.monto || 0; */
-    const monto = parseFloat(montoPago);
+  const monto = parseFloat(montoPago);
 
-    if (isNaN(monto) || monto <= 0) {
-      Alert.alert("Error", "Debe ingresar un monto válido.");
-      return;
-    }
+  if (isNaN(monto) || monto <= 0) {
+    Alert.alert("Error", "Debe ingresar un monto válido.");
+    return;
+  }
 
-    if (tipoPago !== "interes" && monto > montoActualizado) {
-      Alert.alert(
-        "Error",
-        `El monto no puede ser mayor al monto actualizado: $${montoActualizado.toFixed(
-          2
-        )}.`
-      );
-      return;
-    }
+  if (tipoPago !== "interes" && monto > montoActualizado) {
+    Alert.alert(
+      "Error",
+      `El monto no puede ser mayor al monto actualizado: $${montoActualizado.toFixed(
+        2
+      )}.`
+    );
+    return;
+  }
 
-    const fechaActual = new Date().toISOString().split("T")[0];
+  const fechaActual = new Date().toISOString().split("T")[0];
 
-    try {
-      await openPrestamosDb(db);
+  try {
+    await openPrestamosDb(db);
 
-      // Registrar el pago
-      await db.runAsync(
-        `INSERT INTO pagos (prestamo_id, cliente_id, monto, tipo_pago, fecha_pago)
+    // Registrar el pago
+    await db.runAsync(
+      `INSERT INTO pagos (prestamo_id, cliente_id, monto, tipo_pago, fecha_pago)
        VALUES (?, ?, ?, ?, ?)`,
-        [
-          detallePrestamo.id,
-          detallePrestamo.cliente_id,
-          monto,
-          tipoPago,
-          fechaActual,
-        ]
+      [detallePrestamo.id, detallePrestamo.cliente_id, monto, tipoPago, fechaActual]
+    );
+
+    // Solo actualizar monto si el tipo de pago es abono o liquidar
+    if (tipoPago === "abono" || tipoPago === "liquidar") {
+      const nuevoMonto = tipoPago === "liquidar" ? 0 : montoActualizado - monto;
+      const nuevoEstado = nuevoMonto <= 0 ? "pagado" : "pendiente";
+
+      await db.runAsync(
+        `UPDATE prestamos SET monto = ?, estado = ? WHERE id = ?`,
+        [nuevoMonto, nuevoEstado, detallePrestamo.id]
       );
-
-      // Solo actualizar monto si el tipo de pago es abono o liquidar
-      if (tipoPago === "abono" || tipoPago === "liquidar") {
-        const nuevoMonto =
-          tipoPago === "liquidar" ? 0 : montoActualizado - monto;
-        const nuevoEstado = nuevoMonto <= 0 ? "pagado" : "pendiente";
-
-        await db.runAsync(
-          `UPDATE prestamos SET monto = ?, estado = ? WHERE id = ?`,
-          [nuevoMonto, nuevoEstado, detallePrestamo.id]
-        );
-      }
-
-      Alert.alert("Éxito", "Pago registrado correctamente.");
-      setMontoPago("");
-      setMostrarFormularioPago(false);
-    } catch (error) {
-      console.error("Error al registrar el pago:", error);
-      Alert.alert("Error", "Ocurrió un error al registrar el pago.");
     }
-  };
+
+    // Recargar pagos y detalle del préstamo actualizado
+    const pagosActualizados = (await db.getAllAsync(
+      `SELECT * FROM pagos WHERE prestamo_id = ? ORDER BY fecha_pago DESC`,
+      [detallePrestamo.id]
+    )) as Pago[];
+
+    const prestamoActualizado = await db.getFirstAsync<Prestamo | null>(
+      `SELECT * FROM prestamos WHERE id = ?`,
+      [detallePrestamo.id]
+    );
+
+    // Actualizar estado local para refrescar UI
+    setHistorialPagos(pagosActualizados);
+    if (prestamoActualizado) {
+      setDetallePrestamo(prestamoActualizado);
+    }
+
+    Alert.alert("Éxito", "Pago registrado correctamente.");
+    setMontoPago("");
+    setMostrarFormularioPago(false);
+  } catch (error) {
+    console.error("Error al registrar el pago:", error);
+    Alert.alert("Error", "Ocurrió un error al registrar el pago.");
+  }
+};
+
 
   const renderItem = ({ item, index }: { item: Cliente; index: number }) => (
     <TouchableOpacity onPress={() => openClienteModal(item)}>
@@ -585,18 +595,30 @@ export default function ClientesScreen() {
                   {!mostrarFormularioPago && (
                     <>
                       <TouchableOpacity
-                        style={[styles.button, { marginTop: 16 }]}
+                        style={[
+                          styles.button,
+                          { marginTop: 16 },
+                          detallePrestamo.estado === "pagado" && {
+                            backgroundColor: "#ccc",
+                          }, // estilo deshabilitado
+                        ]}
                         onPress={() => {
+                          if (detallePrestamo.estado === "pagado") return; // evita ejecutar acción
                           const fechaHoy = new Date()
                             .toISOString()
                             .split("T")[0];
                           setMontoActualizado(detallePrestamo.monto || 0);
-                          setFechaPago(fechaHoy); // ✅ asigna la fecha de hoy
+                          setFechaPago(fechaHoy);
                           setMostrarFormularioPago(true);
-                          setTipoPago(""); // si aplica
+                          setTipoPago("");
                         }}
+                        disabled={detallePrestamo.estado === "pagado"}
                       >
-                        <Text style={styles.buttonText}>Realizar Pago</Text>
+                        <Text style={styles.buttonText}>
+                          {detallePrestamo.estado === "pagado"
+                            ? "Préstamo Pagado"
+                            : "Realizar Pago"}
+                        </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -740,7 +762,7 @@ export default function ClientesScreen() {
                     {historialPagos.map((pago, index) => (
                       <View key={pago.id} style={styles.row}>
                         <Text style={[styles.cellPrestamo, { flex: 1 }]}>
-                          {index + 1}
+                          {historialPagos.length - index}
                         </Text>
                         <Text style={[styles.cellPrestamo, { flex: 2 }]}>
                           ${pago.monto?.toFixed(2)}
