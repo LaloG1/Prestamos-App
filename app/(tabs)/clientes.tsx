@@ -91,9 +91,17 @@ export default function ClientesScreen() {
   }, [tipoPago, interesEstimado, montoActualizado]);
 
   const [montoInteres, setMontoInteres] = useState(""); // Agregado para montoInteres
-  const [fechaPago, setFechaPago] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  const [fechaPago, setFechaPago] = useState("");
+
+  useEffect(() => {
+    if (!fechaPago) {
+      const hoy = new Date();
+      const yyyy = hoy.getFullYear();
+      const mm = String(hoy.getMonth() + 1).padStart(2, "0");
+      const dd = String(hoy.getDate()).padStart(2, "0");
+      setFechaPago(`${yyyy}-${mm}-${dd}`);
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -296,7 +304,7 @@ export default function ClientesScreen() {
 
       Alert.alert("Éxito", "Pago registrado correctamente.");
       setMontoPago("");
-      setModalClienteVisible(false);
+      setMostrarFormularioPago(false);
     } catch (error) {
       console.error("Error al registrar el pago:", error);
       Alert.alert("Error", "Ocurrió un error al registrar el pago.");
@@ -579,9 +587,13 @@ export default function ClientesScreen() {
                       <TouchableOpacity
                         style={[styles.button, { marginTop: 16 }]}
                         onPress={() => {
+                          const fechaHoy = new Date()
+                            .toISOString()
+                            .split("T")[0];
                           setMontoActualizado(detallePrestamo.monto || 0);
+                          setFechaPago(fechaHoy); // ✅ asigna la fecha de hoy
                           setMostrarFormularioPago(true);
-                          setTipoPago(""); // o lo que uses por defecto
+                          setTipoPago(""); // si aplica
                         }}
                       >
                         <Text style={styles.buttonText}>Realizar Pago</Text>
