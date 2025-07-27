@@ -225,64 +225,47 @@ export default function PrestamosScreen() {
   };
 
   const renderItem = ({ item, index }: { item: Prestamo; index: number }) => (
-    <View style={[styles.row, item.estado === "pagado" && styles.rowPagado]}>
-      <Text style={styles.cellN}>{index + 1}</Text>
-      <TouchableOpacity
-        onPress={() =>
-          abrirModalPrestamoParaCliente({
-            id: item.cliente_id,
-            nombre: item.cliente_nombre,
-          })
-        }
-      >
-        <Text
-          style={[
-            styles.cell,
-            { color: "#007bff", textDecorationLine: "underline" },
-          ]}
-        >
-          {item.cliente_nombre}
-        </Text>
-      </TouchableOpacity>
-
-      <Text style={styles.cell}>{item.monto_original}</Text>
-      <Text style={styles.cell}>{item.interes}%</Text>
-      <Text style={styles.cell}>{item.estado}</Text>
-      <View style={styles.actions}>
-        {item.estado !== "pagado" ? (
-          <>
-            <TouchableOpacity onPress={() => openEditModal(item)}>
-              <Text style={[styles.editBtn, { color: "#007bff" }]}>✏️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => confirmarEliminar(item.id)}>
-              <Text style={[styles.deleteBtn, { color: "#dc3545" }]}>🗑️</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <Text style={{ fontSize: 12, color: "#999" }}>✔️ Pagado</Text>
-        )}
+    <TouchableOpacity
+      onPress={() =>
+        abrirModalPrestamoParaCliente({
+          id: item.cliente_id,
+          nombre: item.cliente_nombre,
+        })
+      }
+    >
+      <View style={[styles.row, item.estado === "pagado" && styles.rowPagado]}>
+        <Text style={styles.cellN}>{index + 1}</Text>
+        <Text style={styles.cell}>{item.cliente_nombre}</Text>
+        <Text style={styles.cell}>{item.monto_original}</Text>
+        <Text style={styles.cell}>{item.interes}%</Text>
+        <Text style={styles.cell}>{item.estado}</Text>
+        <View style={styles.actions}>
+          {item.estado !== "pagado" ? (
+            <>
+              <TouchableOpacity
+                onPress={() => openEditModal(item)}
+                style={{ padding: 4 }}
+              >
+                <Text style={[styles.editBtn, { color: "#007bff" }]}>✏️</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => confirmarEliminar(item.id)}
+                style={{ padding: 4 }}
+              >
+                <Text style={[styles.deleteBtn, { color: "#dc3545" }]}>🗑️</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={{ fontSize: 12, color: "#999" }}>✔️ Pagado</Text>
+          )}
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
-        <TouchableOpacity
-          onPress={() => {
-            setEditingPrestamo(null);
-            setClienteId(null);
-            setMontoOriginal("");
-            setInteres("");
-            setEstado("pendiente");
-            setNotas("");
-            setModalVisible(true);
-          }}
-          style={styles.button}
-        >
-          <Text style={styles.buttonText}>Agregar Préstamo</Text>
-        </TouchableOpacity>
-
         <View style={styles.searchContainer}>
           <TextInput
             placeholder="Buscar cliente por nombre..."
