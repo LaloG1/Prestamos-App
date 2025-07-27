@@ -45,6 +45,9 @@ export default function PrestamosScreen() {
   const [interes, setInteres] = useState("");
   const [estado, setEstado] = useState("pendiente");
   const [notas, setNotas] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState<
+    "todos" | "pendiente" | "pagado"
+  >("todos");
 
   const [editingPrestamo, setEditingPrestamo] = useState<Prestamo | null>(null);
 
@@ -202,19 +205,25 @@ export default function PrestamosScreen() {
   };
 
   const renderItem = ({ item, index }: { item: Prestamo; index: number }) => (
-    <View style={styles.row}>
+    <View style={[styles.row, item.estado === "pagado" && styles.rowPagado]}>
       <Text style={styles.cellN}>{index + 1}</Text>
       <Text style={styles.cell}>{item.cliente_nombre}</Text>
       <Text style={styles.cell}>{item.monto_original}</Text>
       <Text style={styles.cell}>{item.interes}%</Text>
       <Text style={styles.cell}>{item.estado}</Text>
       <View style={styles.actions}>
-        <TouchableOpacity onPress={() => openEditModal(item)}>
-          <Text style={[styles.editBtn, { color: "#007bff" }]}>✏️</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => confirmarEliminar(item.id)}>
-          <Text style={[styles.deleteBtn, { color: "#dc3545" }]}>🗑️</Text>
-        </TouchableOpacity>
+        {item.estado !== "pagado" ? (
+          <>
+            <TouchableOpacity onPress={() => openEditModal(item)}>
+              <Text style={[styles.editBtn, { color: "#007bff" }]}>✏️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => confirmarEliminar(item.id)}>
+              <Text style={[styles.deleteBtn, { color: "#dc3545" }]}>🗑️</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <Text style={{ fontSize: 12, color: "#999" }}>✔️ Pagado</Text>
+        )}
       </View>
     </View>
   );
@@ -237,6 +246,38 @@ export default function PrestamosScreen() {
           <Text style={styles.buttonText}>Agregar Préstamo</Text>
         </TouchableOpacity>
 
+        <View style={styles.radioGroup}>
+          <TouchableOpacity
+            style={styles.radioOption}
+            onPress={() => setFiltroEstado("todos")}
+          >
+            <View style={styles.radioCircle}>
+              {filtroEstado === "todos" && <View style={styles.radioDot} />}
+            </View>
+            <Text style={styles.radioLabel}>Todos</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.radioOption}
+            onPress={() => setFiltroEstado("pendiente")}
+          >
+            <View style={styles.radioCircle}>
+              {filtroEstado === "pendiente" && <View style={styles.radioDot} />}
+            </View>
+            <Text style={styles.radioLabel}>Pendiente</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.radioOption}
+            onPress={() => setFiltroEstado("pagado")}
+          >
+            <View style={styles.radioCircle}>
+              {filtroEstado === "pagado" && <View style={styles.radioDot} />}
+            </View>
+            <Text style={styles.radioLabel}>Pagado</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.tableHeader}>
           <Text style={styles.headerCellN}>#</Text>
           <Text style={styles.headerCell}>Cliente</Text>
@@ -247,7 +288,10 @@ export default function PrestamosScreen() {
         </View>
 
         <FlatList
-          data={prestamos}
+          data={prestamos.filter((p) => {
+            if (filtroEstado === "todos") return true;
+            return p.estado === filtroEstado;
+          })}
           renderItem={renderItem}
           keyExtractor={(item) => item.id.toString()}
         />
@@ -394,6 +438,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     alignItems: "center",
   },
+  rowPagado: {
+    backgroundColor: "#e0f0e0", // un verde muy claro
+  },
   cellN: {
     width: 40,
     fontSize: 14,
@@ -477,5 +524,35 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     borderRadius: 8,
     height: 55,
+  },
+  radioGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 20,
+  },
+
+  radioOption: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  radioCircle: {
+    height: 20,
+    width: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#007bff",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 6,
+  },
+  radioDot: {
+    height: 10,
+    width: 10,
+    borderRadius: 5,
+    backgroundColor: "#007bff",
+  },
+  radioLabel: {
+    fontSize: 16,
   },
 });
