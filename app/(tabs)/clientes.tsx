@@ -74,16 +74,17 @@ export default function ClientesScreen() {
 
   // Formulario pago
   const [mostrarFormularioPago, setMostrarFormularioPago] = useState(false);
-  const [tipoPago, setTipoPago] = useState("interes");
+  const [tipoPago, setTipoPago] = useState("");
   const [montoPago, setMontoPago] = useState("");
-  const [montoActualizado, setMontoActualizado] = useState<number>(0);
+  const [montoActualizado, setMontoActualizado] = useState(0);
 
   useEffect(() => {
     if (tipoPago === "interes") {
       const interes = Number(interesEstimado);
       setMontoPago(isNaN(interes) ? "" : interes.toFixed(2));
     } else if (tipoPago === "liquidar") {
-      setMontoPago(montoActualizado.toFixed(2));
+      const monto = Number(montoActualizado);
+      setMontoPago(isNaN(monto) || monto === 0 ? "" : monto.toFixed(2));
     } else {
       setMontoPago("");
     }
@@ -245,7 +246,7 @@ export default function ClientesScreen() {
       return;
     }
 
-    const montoActualizado = detallePrestamo.monto || 0;
+    /* const montoActualizado = detallePrestamo.monto || 0; */
     const monto = parseFloat(montoPago);
 
     if (isNaN(monto) || monto <= 0) {
@@ -577,7 +578,11 @@ export default function ClientesScreen() {
                     <>
                       <TouchableOpacity
                         style={[styles.button, { marginTop: 16 }]}
-                        onPress={() => setMostrarFormularioPago(true)}
+                        onPress={() => {
+                          setMontoActualizado(detallePrestamo.monto || 0);
+                          setMostrarFormularioPago(true);
+                          setTipoPago(""); // o lo que uses por defecto
+                        }}
                       >
                         <Text style={styles.buttonText}>Realizar Pago</Text>
                       </TouchableOpacity>
@@ -640,7 +645,7 @@ export default function ClientesScreen() {
                         editable={tipoPago !== "liquidar"} // ❗ Solo editable si NO es "liquidar"
                         placeholder={
                           tipoPago === "interes"
-                            ? `interés: $${Number(interesEstimado).toFixed(2)}`
+                            ? `${Number(interesEstimado).toFixed(2)}`
                             : tipoPago === "liquidar"
                             ? isNaN(Number(montoActualizado))
                               ? "Monto a liquidar no disponible"
