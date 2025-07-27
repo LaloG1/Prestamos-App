@@ -518,7 +518,7 @@ export default function ClientesScreen() {
                   renderItem={({ item }) => (
                     <View style={[styles.row, { paddingVertical: 6 }]}>
                       <Text style={[styles.cellPrestamo, { flex: 2 }]}>
-                        ${item.monto_original?.toFixed(2)}
+                        ${item.monto_original}
                       </Text>
                       <Text style={[styles.cellPrestamo, { flex: 1 }]}>
                         {item.estado}
@@ -573,13 +573,13 @@ export default function ClientesScreen() {
                     <View style={styles.column}>
                       <Text style={styles.label}>Monto Original:</Text>
                       <Text style={styles.textInfo}>
-                        ${detallePrestamo.monto_original?.toFixed(2) ?? "0.00"}
+                        ${detallePrestamo.monto_original}
                       </Text>
                     </View>
                     <View style={styles.column}>
                       <Text style={styles.label}>Monto Actualizado:</Text>
                       <Text style={styles.textInfo}>
-                        ${detallePrestamo.monto?.toFixed(2) ?? "0.00"}
+                        ${detallePrestamo.monto}
                       </Text>
                     </View>
                   </View>
@@ -695,13 +695,11 @@ export default function ClientesScreen() {
                         editable={tipoPago !== "liquidar"} // ❗ Solo editable si NO es "liquidar"
                         placeholder={
                           tipoPago === "interes"
-                            ? `${Number(interesEstimado).toFixed(2)}`
+                            ? `${Number(interesEstimado)}`
                             : tipoPago === "liquidar"
                             ? isNaN(Number(montoActualizado))
                               ? "Monto a liquidar no disponible"
-                              : `Monto a liquidar: $${Number(
-                                  montoActualizado
-                                ).toFixed(2)}`
+                              : `Monto a liquidar: $${Number(montoActualizado)}`
                             : "Ingresa un monto"
                         }
                       />
@@ -781,7 +779,7 @@ export default function ClientesScreen() {
                           {historialPagos.length - index}
                         </Text>
                         <Text style={[styles.cellPrestamo, { flex: 2 }]}>
-                          ${pago.monto?.toFixed(2)}
+                          ${pago.monto}
                         </Text>
                         <Text style={[styles.cellPrestamo, { flex: 2 }]}>
                           {pago.tipo_pago}

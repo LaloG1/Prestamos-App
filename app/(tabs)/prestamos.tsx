@@ -205,8 +205,8 @@ export default function PrestamosScreen() {
     <View style={styles.row}>
       <Text style={styles.cellN}>{index + 1}</Text>
       <Text style={styles.cell}>{item.cliente_nombre}</Text>
-      <Text style={styles.cell}>{item.monto_original.toFixed(2)}</Text>
-      <Text style={styles.cell}>{item.interes.toFixed(2)}%</Text>
+      <Text style={styles.cell}>{item.monto_original}</Text>
+      <Text style={styles.cell}>{item.interes}%</Text>
       <Text style={styles.cell}>{item.estado}</Text>
       <View style={styles.actions}>
         <TouchableOpacity onPress={() => openEditModal(item)}>
