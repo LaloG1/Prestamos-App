@@ -41,6 +41,7 @@ export default function PrestamosScreen() {
 
   // Campos del formulario
   const [clienteId, setClienteId] = useState<number | null>(null);
+  const [searchText, setSearchText] = useState("");
   const [montoOriginal, setMontoOriginal] = useState("");
   const [interes, setInteres] = useState("");
   const [estado, setEstado] = useState("pendiente");
@@ -59,11 +60,16 @@ export default function PrestamosScreen() {
     })();
   }, []);
 
-  const fetchClientes = async () => {
+  const fetchClientes = async (filter: string = "") => {
     try {
-      const result = await db.getAllAsync<Cliente>(
-        `SELECT id, nombre FROM clientes ORDER BY nombre`
-      );
+      let query = `SELECT id, nombre FROM clientes`;
+      let params: any[] = [];
+      if (filter.trim() !== "") {
+        query += ` WHERE nombre LIKE ?`;
+        params.push(`%${filter}%`);
+      }
+      query += ` ORDER BY nombre`;
+      const result = await db.getAllAsync<Cliente>(query, params);
       setClientes(result);
     } catch (error) {
       console.log("Error al obtener clientes:", error);
@@ -246,6 +252,26 @@ export default function PrestamosScreen() {
           <Text style={styles.buttonText}>Agregar Préstamo</Text>
         </TouchableOpacity>
 
+        <View style={styles.searchContainer}>
+          <TextInput
+            placeholder="Buscar cliente por nombre..."
+            value={searchText}
+            onChangeText={setSearchText}
+            onSubmitEditing={() => fetchClientes(searchText)}
+            style={styles.searchInput}
+          />
+          {searchText !== "" && (
+            <TouchableOpacity
+              onPress={() => {
+                setSearchText("");
+                fetchClientes();
+              }}
+            >
+              <Text style={styles.clearButton}>❌</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         <View style={styles.radioGroup}>
           <TouchableOpacity
             style={styles.radioOption}
@@ -289,8 +315,12 @@ export default function PrestamosScreen() {
 
         <FlatList
           data={prestamos.filter((p) => {
-            if (filtroEstado === "todos") return true;
-            return p.estado === filtroEstado;
+            const coincideEstado =
+              filtroEstado === "todos" || p.estado === filtroEstado;
+            const coincideNombre = p.cliente_nombre
+              .toLowerCase()
+              .includes(searchText.toLowerCase());
+            return coincideEstado && coincideNombre;
           })}
           renderItem={renderItem}
           keyExtractor={(item) => item.id.toString()}
@@ -554,5 +584,23 @@ const styles = StyleSheet.create({
   },
   radioLabel: {
     fontSize: 16,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 12,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 8,
+    fontSize: 16,
+  },
+  clearButton: {
+    fontSize: 18,
+    marginLeft: 8,
   },
 });

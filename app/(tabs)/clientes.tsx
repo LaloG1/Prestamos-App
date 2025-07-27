@@ -364,6 +364,7 @@ export default function ClientesScreen() {
           <Text style={styles.buttonText}>Agregar Cliente</Text>
         </TouchableOpacity>
 
+        {/* TextBox para buscar clientes por nombre y botón para limpiar la busqueda de cliente */}
         <View style={styles.searchContainer}>
           <TextInput
             placeholder="Buscar cliente por nombre..."
