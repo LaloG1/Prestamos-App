@@ -41,6 +41,9 @@ export default function PrestamosScreen() {
 
   // Campos del formulario
   const [clienteId, setClienteId] = useState<number | null>(null);
+  const [clienteSeleccionado, setClienteSeleccionado] =
+    useState<Cliente | null>(null);
+
   const [searchText, setSearchText] = useState("");
   const [montoOriginal, setMontoOriginal] = useState("");
   const [interes, setInteres] = useState("");
@@ -49,6 +52,17 @@ export default function PrestamosScreen() {
   const [filtroEstado, setFiltroEstado] = useState<
     "todos" | "pendiente" | "pagado"
   >("todos");
+
+  const abrirModalPrestamoParaCliente = (cliente: Cliente) => {
+    setClienteSeleccionado(cliente);
+    setClienteId(cliente.id);
+    setEditingPrestamo(null);
+    setMontoOriginal("");
+    setInteres("");
+    setEstado("pendiente");
+    setNotas("");
+    setModalVisible(true);
+  };
 
   const [editingPrestamo, setEditingPrestamo] = useState<Prestamo | null>(null);
 
@@ -213,7 +227,24 @@ export default function PrestamosScreen() {
   const renderItem = ({ item, index }: { item: Prestamo; index: number }) => (
     <View style={[styles.row, item.estado === "pagado" && styles.rowPagado]}>
       <Text style={styles.cellN}>{index + 1}</Text>
-      <Text style={styles.cell}>{item.cliente_nombre}</Text>
+      <TouchableOpacity
+        onPress={() =>
+          abrirModalPrestamoParaCliente({
+            id: item.cliente_id,
+            nombre: item.cliente_nombre,
+          })
+        }
+      >
+        <Text
+          style={[
+            styles.cell,
+            { color: "#007bff", textDecorationLine: "underline" },
+          ]}
+        >
+          {item.cliente_nombre}
+        </Text>
+      </TouchableOpacity>
+
       <Text style={styles.cell}>{item.monto_original}</Text>
       <Text style={styles.cell}>{item.interes}%</Text>
       <Text style={styles.cell}>{item.estado}</Text>
@@ -330,27 +361,14 @@ export default function PrestamosScreen() {
           <View style={styles.modalContainer}>
             <View style={styles.modalBox}>
               <Text style={styles.modalTitle}>
-                {editingPrestamo ? "Editar Préstamo" : "Nuevo Préstamo"}
+                {editingPrestamo
+                  ? "Editar Préstamo"
+                  : clienteSeleccionado
+                  ? `Nuevo Préstamo para ${clienteSeleccionado.nombre}`
+                  : "Nuevo Préstamo"}
               </Text>
 
               {/* Selector Cliente */}
-              <View style={styles.pickerContainer}>
-                <Text style={styles.label}>Cliente:</Text>
-                <Picker
-                  selectedValue={clienteId}
-                  onValueChange={(
-                    itemValue: number | null,
-                    itemIndex: number
-                  ) => setClienteId(Number(itemValue))}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Selecciona un cliente" value={null} />
-                  {clientes.map((c: Cliente) => (
-                    <Picker.Item key={c.id} label={c.nombre} value={c.id} />
-                  ))}
-                </Picker>
-              </View>
-
               <TextInput
                 placeholder="Monto Original"
                 value={montoOriginal}
