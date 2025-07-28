@@ -1,43 +1,41 @@
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
-import { Alert, Button, StyleSheet, View } from "react-native";
+import { Feather } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import ParallaxScrollView from "@/components/ParallaxScrollView";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
-import { IconSymbol } from "@/components/ui/IconSymbol";
+import ParallaxScrollView from '@/components/ParallaxScrollView';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+
+const DB_NAME = 'prestamos.db'; // Nombre de tu base de datos
 
 export default function TabTwoScreen() {
-  const compartirBaseDeDatos = async () => {
+  const shareDatabase = async () => {
     try {
-      const dbName = "prestamos.db"; // Cambia esto si tu DB tiene otro nombre
-      const dbPath = `${FileSystem.documentDirectory}SQLite/${dbName}`;
-
+      const dbPath = `${FileSystem.documentDirectory}SQLite/${DB_NAME}`;
       const fileInfo = await FileSystem.getInfoAsync(dbPath);
+
       if (!fileInfo.exists) {
-        Alert.alert("Error", "No se encontró la base de datos.");
+        Alert.alert('Error', 'No se encontró la base de datos.');
         return;
       }
 
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        Alert.alert(
-          "No disponible",
-          "La función de compartir no está disponible en este dispositivo."
-        );
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert('No disponible', 'No se puede compartir en este dispositivo.');
         return;
       }
 
       await Sharing.shareAsync(dbPath);
     } catch (error) {
-      console.error("Error al compartir base de datos:", error);
-      Alert.alert("Error", "Hubo un problema al compartir la base de datos.");
+      console.error('Error al compartir la base de datos:', error);
+      Alert.alert('Error', 'No se pudo compartir la base de datos.');
     }
   };
 
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: "#D0D0D0", dark: "#353636" }}
+      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
       headerImage={
         <IconSymbol
           size={310}
@@ -45,18 +43,16 @@ export default function TabTwoScreen() {
           name="chevron.left.forwardslash.chevron.right"
           style={styles.headerImage}
         />
-      }
-    >
+      }>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Explore</ThemedText>
       </ThemedView>
 
-      {/* Botón para compartir base de datos */}
       <View style={styles.buttonContainer}>
-        <Button
-          title="Compartir Base de Datos"
-          onPress={compartirBaseDeDatos}
-        />
+        <TouchableOpacity style={styles.shareButton} onPress={shareDatabase}>
+          <Feather name="share-2" size={20} color="#fff" style={styles.icon} />
+          <Text style={styles.buttonText}>Compartir base de datos</Text>
+        </TouchableOpacity>
       </View>
     </ParallaxScrollView>
   );
@@ -64,14 +60,42 @@ export default function TabTwoScreen() {
 
 const styles = StyleSheet.create({
   headerImage: {
-    color: "#808080",
+    color: '#808080',
     bottom: -90,
     left: -35,
-    position: "absolute",
+    position: 'absolute',
   },
   titleContainer: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  buttonContainer: {
+    marginTop: 30,
+    alignItems: 'center',
+  },
+  shareButton: {
+    flexDirection: 'row',
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  icon: {
+    marginRight: 8,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   buttonContainer: {
     marginTop: 20,
