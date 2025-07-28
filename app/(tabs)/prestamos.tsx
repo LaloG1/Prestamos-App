@@ -26,6 +26,7 @@ interface Prestamo {
   id: number;
   cliente_id: number;
   cliente_nombre: string; // Lo obtendremos con JOIN
+  monto: number;
   monto_original: number;
   interes: number;
   estado: string;
@@ -45,6 +46,8 @@ export default function PrestamosScreen() {
   const [prestamoSeleccionado, setPrestamoSeleccionado] =
     useState<Prestamo | null>(null);
 
+  const [tienePendiente, setTienePendiente] = useState(false);
+
   const [searchText, setSearchText] = useState("");
   const [montoOriginal, setMontoOriginal] = useState("");
   const [interes, setInteres] = useState("");
@@ -53,6 +56,21 @@ export default function PrestamosScreen() {
   const [filtroEstado, setFiltroEstado] = useState<
     "todos" | "pendiente" | "pagado"
   >("todos");
+
+  const verificarPrestamoPendiente = async (
+    clienteId: number
+  ): Promise<Prestamo | null> => {
+    try {
+      const result = await db.getFirstAsync<Prestamo>(
+        `SELECT * FROM prestamos WHERE cliente_id = ? AND estado = 'pendiente'`,
+        [clienteId]
+      );
+      return result || null;
+    } catch (error) {
+      console.log("Error al verificar préstamo pendiente:", error);
+      return null;
+    }
+  };
 
   const abrirInfoPrestamo = (prestamo: Prestamo) => {
     setPrestamoSeleccionado(prestamo);
@@ -106,7 +124,7 @@ export default function PrestamosScreen() {
       return;
     }
     if (!montoOriginal.trim() || isNaN(Number(montoOriginal))) {
-      Alert.alert("Error", "Monto original inválido.");
+      Alert.alert("Error", "Monto inválido.");
       return;
     }
     if (!interes.trim() || isNaN(Number(interes))) {
@@ -114,28 +132,39 @@ export default function PrestamosScreen() {
       return;
     }
 
+    const monto = Number(montoOriginal);
+    const interesVal = Number(interes);
     const now = new Date().toISOString();
 
     try {
-      await db.runAsync(
-        `INSERT INTO prestamos (cliente_id, monto_original, monto, interes, estado, notas, created_at, updated_at)
+      const prestamoPendiente = await verificarPrestamoPendiente(clienteId);
+
+      if (prestamoPendiente) {
+        // Cliente ya tiene préstamo pendiente → Actualizar monto
+        const nuevoMonto = prestamoPendiente.monto + monto;
+        await db.runAsync(
+          `UPDATE prestamos SET monto = ?, updated_at = ? WHERE id = ?`,
+          [nuevoMonto, now, prestamoPendiente.id]
+        );
+
+        Alert.alert(
+          "Actualizado",
+          `El cliente ya tiene un préstamo pendiente.\nSe ha sumado el nuevo monto al préstamo existente.`
+        );
+      } else {
+        // Cliente sin préstamo pendiente → Insertar nuevo préstamo
+        await db.runAsync(
+          `INSERT INTO prestamos (cliente_id, monto_original, monto, interes, estado, notas, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          clienteId,
-          Number(montoOriginal),
-          Number(montoOriginal), // monto inicial igual a monto_original
-          Number(interes),
-          estado,
-          notas,
-          now,
-          now,
-        ]
-      );
+          [clienteId, monto, monto, interesVal, "pendiente", notas, now, now]
+        );
+        Alert.alert("Éxito", "Préstamo registrado correctamente.");
+      }
+
       cerrarModal();
-      Alert.alert("Éxito", "El préstamo ha sido registrado correctamente.");
       fetchPrestamos();
     } catch (error) {
-      console.log("Error al insertar préstamo:", error);
+      console.log("Error al agregar préstamo:", error);
     }
   };
 
@@ -250,13 +279,15 @@ export default function PrestamosScreen() {
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
         <TouchableOpacity
-          onPress={() => {
+          onPress={async () => {
             setEditingPrestamo(null);
             setClienteId(null);
             setMontoOriginal("");
             setInteres("");
             setEstado("pendiente");
             setNotas("");
+            setSearchText("");
+            setTienePendiente(false);
             setModalVisible(true);
           }}
           style={styles.button}
@@ -368,9 +399,23 @@ export default function PrestamosScreen() {
                     {clientes.map((cliente) => (
                       <TouchableOpacity
                         key={cliente.id}
-                        onPress={() => {
+                        onPress={async () => {
                           setClienteId(cliente.id);
                           setSearchText(cliente.nombre);
+                          const pendiente = await verificarPrestamoPendiente(
+                            cliente.id
+                          );
+                          if (pendiente) {
+                            Alert.alert(
+                              "Advertencia",
+                              "Este cliente ya tiene un préstamo pendiente. El nuevo monto se sumará al existente."
+                            );
+                            setTienePendiente(true);
+                            setInteres(pendiente.interes.toString()); // usar el mismo interés
+                          } else {
+                            setTienePendiente(false);
+                            setInteres(""); // permitir escribir uno nuevo
+                          }
                         }}
                         style={styles.dropdownItem}
                       >
@@ -388,13 +433,20 @@ export default function PrestamosScreen() {
                 style={styles.input}
                 keyboardType="decimal-pad"
               />
-              <TextInput
-                placeholder="Interés (%)"
-                value={interes}
-                onChangeText={setInteres}
-                style={styles.input}
-                keyboardType="decimal-pad"
-              />
+              {tienePendiente ? (
+                <View style={[styles.input, { justifyContent: "center" }]}>
+                  <Text>Interés actual: {interes}%</Text>
+                </View>
+              ) : (
+                <TextInput
+                  placeholder="Interés (%)"
+                  value={interes}
+                  onChangeText={setInteres}
+                  style={styles.input}
+                  keyboardType="decimal-pad"
+                />
+              )}
+
               {editingPrestamo ? (
                 <View style={styles.pickerContainer}>
                   <Text style={styles.label}>Estado:</Text>
@@ -480,7 +532,10 @@ export default function PrestamosScreen() {
               )}
 
               <TouchableOpacity
-                style={[styles.button, { marginTop: 16, backgroundColor: "#6e7780ff"  }]}
+                style={[
+                  styles.button,
+                  { marginTop: 16, backgroundColor: "#6e7780ff" },
+                ]}
                 onPress={() => setInfoModalVisible(false)}
               >
                 <Text style={styles.buttonText}>Cerrar</Text>
