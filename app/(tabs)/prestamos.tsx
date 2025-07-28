@@ -123,6 +123,7 @@ export default function PrestamosScreen() {
         ]
       );
       cerrarModal();
+       Alert.alert("Éxito", "El préstamo ha sido registrado correctamente.");
       fetchPrestamos();
     } catch (error) {
       console.log("Error al insertar préstamo:", error);
@@ -334,21 +335,39 @@ export default function PrestamosScreen() {
               </Text>
 
               {/* Selector Cliente */}
-              <View style={styles.pickerContainer}>
-                <Text style={styles.label}>Cliente:</Text>
-                <Picker
-                  selectedValue={clienteId}
-                  onValueChange={(
-                    itemValue: number | null,
-                    itemIndex: number
-                  ) => setClienteId(Number(itemValue))}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Selecciona un cliente" value={null} />
-                  {clientes.map((c: Cliente) => (
-                    <Picker.Item key={c.id} label={c.nombre} value={c.id} />
-                  ))}
-                </Picker>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Buscar Cliente:</Text>
+                <TextInput
+                  placeholder="Escribe el nombre del cliente..."
+                  value={
+                    clienteId
+                      ? clientes.find((c) => c.id === clienteId)?.nombre ||
+                        searchText
+                      : searchText
+                  }
+                  onChangeText={(text) => {
+                    setSearchText(text);
+                    setClienteId(null); // Reinicia selección
+                    fetchClientes(text); // Filtra clientes
+                  }}
+                  style={styles.input}
+                />
+                {searchText.length > 0 && clienteId === null && (
+                  <View style={styles.dropdown}>
+                    {clientes.map((cliente) => (
+                      <TouchableOpacity
+                        key={cliente.id}
+                        onPress={() => {
+                          setClienteId(cliente.id);
+                          setSearchText(cliente.nombre);
+                        }}
+                        style={styles.dropdownItem}
+                      >
+                        <Text>{cliente.nombre}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
 
               <TextInput
@@ -602,5 +621,27 @@ const styles = StyleSheet.create({
   clearButton: {
     fontSize: 18,
     marginLeft: 8,
+  },
+  inputContainer: {
+    marginBottom: 12,
+    position: "relative",
+  },
+  dropdown: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    maxHeight: 150,
+    overflow: "scroll",
+    position: "absolute",
+    top: 70,
+    left: 0,
+    right: 0,
+    zIndex: 999,
+  },
+  dropdownItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
 });
