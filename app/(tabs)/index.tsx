@@ -1,39 +1,56 @@
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FontAwesome } from '@expo/vector-icons';
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import ParallaxScrollView from "@/components/ParallaxScrollView";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
 
 export default function HomeScreen() {
   const router = useRouter();
 
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+      headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
       headerImage={
         <Image
-          source={require('@/assets/images/partial-react-logo.png')}
+          source={require("@/assets/images/partial-react-logo.png")}
           style={styles.reactLogo}
         />
-      }>
+      }
+    >
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">E G M - Prestamos!</ThemedText>
+        <ThemedText type="title">E G M - Préstamos!</ThemedText>
       </ThemedView>
 
       <View style={styles.buttonsContainer}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push('/(tabs)/clientes' as any)}>
-          <Text style={styles.buttonText}>Clientes</Text>
-        </TouchableOpacity>
+        {/* Fila 1: Clientes y Préstamos */}
+        <View style={styles.row}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => router.push('/(tabs)/clientes' as any)}>
+            <FontAwesome name="users" size={32} color="white" />
+            <Text style={styles.buttonText}>Clientes</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => router.push('/(tabs)/prestamos' as any)}>
-          <Text style={styles.buttonText}>Préstamos</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => router.push('/(tabs)/prestamos' as any)}>
+            <FontAwesome name="money" size={32} color="white" />
+            <Text style={styles.buttonText}>Préstamos</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Fila 2: Cobros */}
+        <View style={styles.row}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => router.push('/(tabs)/cobros' as any)}>
+            <FontAwesome name="credit-card" size={32} color="white" />
+            <Text style={styles.buttonText}>Cobros</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </ParallaxScrollView>
   );
@@ -41,15 +58,21 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 20,
   },
   buttonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 20,
+    gap: 20,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 20,
   },
   button: {
     backgroundColor: '#1D3D47',
@@ -58,17 +81,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
+    gap: 6,
   },
   buttonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   reactLogo: {
     height: 178,
     width: 290,
     bottom: 0,
     left: 0,
-    position: 'absolute',
+    position: "absolute",
   },
 });
