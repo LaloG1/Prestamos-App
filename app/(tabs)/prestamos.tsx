@@ -480,7 +480,7 @@ export default function PrestamosScreen() {
               )}
 
               <TouchableOpacity
-                style={[styles.button, { marginTop: 16, backgroundColor: "#6e7997ff"  }]}
+                style={[styles.button, { marginTop: 16, backgroundColor: "#6e7780ff"  }]}
                 onPress={() => setInfoModalVisible(false)}
               >
                 <Text style={styles.buttonText}>Cerrar</Text>
