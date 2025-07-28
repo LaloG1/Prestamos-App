@@ -41,6 +41,9 @@ export default function PrestamosScreen() {
 
   // Campos del formulario
   const [clienteId, setClienteId] = useState<number | null>(null);
+  const [clienteSeleccionado, setClienteSeleccionado] =
+    useState<Cliente | null>(null);
+
   const [searchText, setSearchText] = useState("");
   const [montoOriginal, setMontoOriginal] = useState("");
   const [interes, setInteres] = useState("");
@@ -49,6 +52,17 @@ export default function PrestamosScreen() {
   const [filtroEstado, setFiltroEstado] = useState<
     "todos" | "pendiente" | "pagado"
   >("todos");
+
+  const abrirModalPrestamoParaCliente = (cliente: Cliente) => {
+    setClienteSeleccionado(cliente);
+    setClienteId(cliente.id);
+    setEditingPrestamo(null);
+    setMontoOriginal("");
+    setInteres("");
+    setEstado("pendiente");
+    setNotas("");
+    setModalVisible(true);
+  };
 
   const [editingPrestamo, setEditingPrestamo] = useState<Prestamo | null>(null);
 
@@ -78,14 +92,29 @@ export default function PrestamosScreen() {
 
   const fetchPrestamos = async () => {
     try {
-      // Obtener préstamos con nombre del cliente via JOIN
-      const result = await db.getAllAsync<Prestamo>(`
-        SELECT p.*, c.nombre as cliente_nombre
-        FROM prestamos p
-        JOIN clientes c ON p.cliente_id = c.id
-        ORDER BY p.created_at DESC
-      `);
-      setPrestamos(result);
+      const result = await db.getAllAsync<any>(`
+      SELECT c.id as cliente_id, c.nombre as cliente_nombre,
+             p.id as prestamo_id, p.monto_original, p.interes,
+             p.estado, p.notas, p.created_at, p.updated_at
+      FROM clientes c
+      LEFT JOIN prestamos p ON p.cliente_id = c.id
+      ORDER BY c.nombre
+    `);
+
+      // Convertir a formato Prestamo[]
+      const prestamosConClientes: Prestamo[] = result.map((row) => ({
+        id: row.prestamo_id ?? -1, // -1 o cualquier identificador para los que no tienen préstamo
+        cliente_id: row.cliente_id,
+        cliente_nombre: row.cliente_nombre,
+        monto_original: row.monto_original ?? 0,
+        interes: row.interes ?? 0,
+        estado: row.estado ?? "",
+        notas: row.notas ?? null,
+        created_at: row.created_at ?? "",
+        updated_at: row.updated_at ?? "",
+      }));
+
+      setPrestamos(prestamosConClientes);
     } catch (error) {
       console.log("Error al obtener préstamos:", error);
     }
@@ -212,47 +241,69 @@ export default function PrestamosScreen() {
   };
 
   const renderItem = ({ item, index }: { item: Prestamo; index: number }) => (
-    <View style={[styles.row, item.estado === "pagado" && styles.rowPagado]}>
-      <Text style={styles.cellN}>{index + 1}</Text>
-      <Text style={styles.cell}>{item.cliente_nombre}</Text>
-      <Text style={styles.cell}>{item.monto_original}</Text>
-      <Text style={styles.cell}>{item.interes}%</Text>
-      <Text style={styles.cell}>{item.estado}</Text>
-      <View style={styles.actions}>
-        {item.estado !== "pagado" ? (
-          <>
-            <TouchableOpacity onPress={() => openEditModal(item)}>
-              <Text style={[styles.editBtn, { color: "#007bff" }]}>✏️</Text>
+    <TouchableOpacity
+      onPress={() =>
+        item.id === -1
+          ? abrirModalPrestamoParaCliente({
+              id: item.cliente_id,
+              nombre: item.cliente_nombre,
+            })
+          : null
+      }
+    >
+      <View style={[styles.row, item.estado === "pagado" && styles.rowPagado]}>
+        <Text style={styles.cellN}>{index + 1}</Text>
+        <Text style={styles.cell}>{item.cliente_nombre}</Text>
+        <Text style={styles.cell}>
+          {item.id === -1 ? "-" : item.monto_original}
+        </Text>
+        <Text style={styles.cell}>
+          {item.id === -1 ? "-" : `${item.interes}%`}
+        </Text>
+        <Text style={styles.cell}>{item.id === -1 ? "-" : item.estado}</Text>
+
+        <View style={styles.actions}>
+          {item.id !== -1 ? (
+            item.estado !== "pagado" ? (
+              <>
+                <TouchableOpacity
+                  onPress={() => openEditModal(item)}
+                  style={{ padding: 4 }}
+                >
+                  <Text style={[styles.editBtn, { color: "#007bff" }]}>✏️</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => confirmarEliminar(item.id)}
+                  style={{ padding: 4 }}
+                >
+                  <Text style={[styles.deleteBtn, { color: "#dc3545" }]}>
+                    🗑️
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={{ fontSize: 12, color: "#999" }}>✔️ Pagado</Text>
+            )
+          ) : (
+            <TouchableOpacity
+              onPress={() =>
+                abrirModalPrestamoParaCliente({
+                  id: item.cliente_id,
+                  nombre: item.cliente_nombre,
+                })
+              }
+            >
+              <Text style={{ color: "#28a745", fontSize: 16 }}>➕ Nuevo</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => confirmarEliminar(item.id)}>
-              <Text style={[styles.deleteBtn, { color: "#dc3545" }]}>🗑️</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <Text style={{ fontSize: 12, color: "#999" }}>✔️ Pagado</Text>
-        )}
+          )}
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
-        <TouchableOpacity
-          onPress={() => {
-            setEditingPrestamo(null);
-            setClienteId(null);
-            setMontoOriginal("");
-            setInteres("");
-            setEstado("pendiente");
-            setNotas("");
-            setModalVisible(true);
-          }}
-          style={styles.button}
-        >
-          <Text style={styles.buttonText}>Agregar Préstamo</Text>
-        </TouchableOpacity>
-
         <View style={styles.searchContainer}>
           <TextInput
             placeholder="Buscar cliente por nombre..."
@@ -331,7 +382,11 @@ export default function PrestamosScreen() {
           <View style={styles.modalContainer}>
             <View style={styles.modalBox}>
               <Text style={styles.modalTitle}>
-                {editingPrestamo ? "Editar Préstamo" : "Nuevo Préstamo"}
+                {editingPrestamo
+                  ? "Editar Préstamo"
+                  : clienteSeleccionado
+                  ? `Nuevo Préstamo para ${clienteSeleccionado.nombre}`
+                  : "Nuevo Préstamo"}
               </Text>
 
               {/* Selector Cliente */}
