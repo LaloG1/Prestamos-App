@@ -97,8 +97,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  buttonContainer: {
-    marginTop: 20,
-    paddingHorizontal: 20,
-  },
 });
