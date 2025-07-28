@@ -254,7 +254,7 @@ export default function PrestamosScreen() {
       <View style={[styles.row, item.estado === "pagado" && styles.rowPagado]}>
         <Text style={styles.cellN}>{index + 1}</Text>
         <Text style={styles.cell}>{item.cliente_nombre}</Text>
-        <Text style={styles.cell}>{item.monto_original}</Text>
+        <Text style={styles.cell}>{item.monto}</Text>
         <Text style={styles.cell}>{item.interes}%</Text>
         <Text style={styles.cell}>{item.estado}</Text>
         <View style={styles.actions}>
@@ -350,7 +350,7 @@ export default function PrestamosScreen() {
         <View style={styles.tableHeader}>
           <Text style={styles.headerCellN}>#</Text>
           <Text style={styles.headerCell}>Cliente</Text>
-          <Text style={styles.headerCell}>Monto Original</Text>
+          <Text style={styles.headerCell}>Monto Actual</Text>
           <Text style={styles.headerCell}>Interés</Text>
           <Text style={styles.headerCell}>Estado</Text>
           <Text style={styles.headerCellActions}>Acciones</Text>
@@ -427,7 +427,7 @@ export default function PrestamosScreen() {
               </View>
 
               <TextInput
-                placeholder="Monto Original"
+                placeholder="Monto"
                 value={montoOriginal}
                 onChangeText={setMontoOriginal}
                 style={styles.input}
@@ -513,6 +513,10 @@ export default function PrestamosScreen() {
                   <Text style={styles.infoItem}>
                     💰 <Text style={styles.infoLabel}>Monto Original:</Text> $
                     {prestamoSeleccionado.monto_original}
+                  </Text>
+                  <Text style={styles.infoItem}>
+                    💰 <Text style={styles.infoLabel}>Monto Actual:</Text> $
+                    {prestamoSeleccionado.monto}
                   </Text>
                   <Text style={styles.infoItem}>
                     📈 <Text style={styles.infoLabel}>Interés:</Text>{" "}

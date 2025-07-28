@@ -519,7 +519,7 @@ export default function ClientesScreen() {
                   renderItem={({ item }) => (
                     <View style={[styles.row, { paddingVertical: 6 }]}>
                       <Text style={[styles.cellPrestamo, { flex: 2 }]}>
-                        ${item.monto_original}
+                        ${item.monto}
                       </Text>
                       <Text style={[styles.cellPrestamo, { flex: 1 }]}>
                         {item.estado}
