@@ -41,6 +41,10 @@ export default function PrestamosScreen() {
 
   // Campos del formulario
   const [clienteId, setClienteId] = useState<number | null>(null);
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [prestamoSeleccionado, setPrestamoSeleccionado] =
+    useState<Prestamo | null>(null);
+
   const [searchText, setSearchText] = useState("");
   const [montoOriginal, setMontoOriginal] = useState("");
   const [interes, setInteres] = useState("");
@@ -49,6 +53,11 @@ export default function PrestamosScreen() {
   const [filtroEstado, setFiltroEstado] = useState<
     "todos" | "pendiente" | "pagado"
   >("todos");
+
+  const abrirInfoPrestamo = (prestamo: Prestamo) => {
+    setPrestamoSeleccionado(prestamo);
+    setInfoModalVisible(true);
+  };
 
   const [editingPrestamo, setEditingPrestamo] = useState<Prestamo | null>(null);
 
@@ -123,7 +132,7 @@ export default function PrestamosScreen() {
         ]
       );
       cerrarModal();
-       Alert.alert("Éxito", "El préstamo ha sido registrado correctamente.");
+      Alert.alert("Éxito", "El préstamo ha sido registrado correctamente.");
       fetchPrestamos();
     } catch (error) {
       console.log("Error al insertar préstamo:", error);
@@ -212,27 +221,29 @@ export default function PrestamosScreen() {
   };
 
   const renderItem = ({ item, index }: { item: Prestamo; index: number }) => (
-    <View style={[styles.row, item.estado === "pagado" && styles.rowPagado]}>
-      <Text style={styles.cellN}>{index + 1}</Text>
-      <Text style={styles.cell}>{item.cliente_nombre}</Text>
-      <Text style={styles.cell}>{item.monto_original}</Text>
-      <Text style={styles.cell}>{item.interes}%</Text>
-      <Text style={styles.cell}>{item.estado}</Text>
-      <View style={styles.actions}>
-        {item.estado !== "pagado" ? (
-          <>
-            <TouchableOpacity onPress={() => openEditModal(item)}>
-              <Text style={[styles.editBtn, { color: "#007bff" }]}>✏️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => confirmarEliminar(item.id)}>
-              <Text style={[styles.deleteBtn, { color: "#dc3545" }]}>🗑️</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <Text style={{ fontSize: 12, color: "#999" }}>✔️ Pagado</Text>
-        )}
+    <TouchableOpacity onPress={() => abrirInfoPrestamo(item)}>
+      <View style={[styles.row, item.estado === "pagado" && styles.rowPagado]}>
+        <Text style={styles.cellN}>{index + 1}</Text>
+        <Text style={styles.cell}>{item.cliente_nombre}</Text>
+        <Text style={styles.cell}>{item.monto_original}</Text>
+        <Text style={styles.cell}>{item.interes}%</Text>
+        <Text style={styles.cell}>{item.estado}</Text>
+        <View style={styles.actions}>
+          {item.estado !== "pagado" ? (
+            <>
+              <TouchableOpacity onPress={() => openEditModal(item)}>
+                <Text style={[styles.editBtn, { color: "#007bff" }]}>✏️</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => confirmarEliminar(item.id)}>
+                <Text style={[styles.deleteBtn, { color: "#dc3545" }]}>🗑️</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={{ fontSize: 12, color: "#999" }}>✔️ Pagado</Text>
+          )}
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -430,6 +441,53 @@ export default function PrestamosScreen() {
             </View>
           </View>
         </Modal>
+        <Modal
+          visible={infoModalVisible}
+          animationType="fade"
+          transparent={true}
+        >
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalBox, { alignItems: "center" }]}>
+              <Text style={[styles.modalTitle, { marginBottom: 20 }]}>
+                📄 Detalles del Préstamo
+              </Text>
+
+              {prestamoSeleccionado && (
+                <>
+                  <Text style={styles.infoItem}>
+                    👤 <Text style={styles.infoLabel}>Cliente:</Text>{" "}
+                    {prestamoSeleccionado.cliente_nombre}
+                  </Text>
+                  <Text style={styles.infoItem}>
+                    💰 <Text style={styles.infoLabel}>Monto Original:</Text> $
+                    {prestamoSeleccionado.monto_original}
+                  </Text>
+                  <Text style={styles.infoItem}>
+                    📈 <Text style={styles.infoLabel}>Interés:</Text>{" "}
+                    {prestamoSeleccionado.interes}%
+                  </Text>
+                  <Text style={styles.infoItem}>
+                    🏷️ <Text style={styles.infoLabel}>Estado:</Text>{" "}
+                    {prestamoSeleccionado.estado === "pagado"
+                      ? "✅ Pagado"
+                      : "⏳ Pendiente"}
+                  </Text>
+                  <Text style={styles.infoItem}>
+                    🗓️ <Text style={styles.infoLabel}>Creado el:</Text>{" "}
+                    {new Date(prestamoSeleccionado.created_at).toLocaleString()}
+                  </Text>
+                </>
+              )}
+
+              <TouchableOpacity
+                style={[styles.button, { marginTop: 16, backgroundColor: "#6e7997ff"  }]}
+                onPress={() => setInfoModalVisible(false)}
+              >
+                <Text style={styles.buttonText}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -460,6 +518,17 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
     paddingHorizontal: 4,
+  },
+  infoItem: {
+    fontSize: 16,
+    marginBottom: 10,
+    textAlign: "left",
+    alignSelf: "stretch",
+    color: "#333",
+  },
+  infoLabel: {
+    fontWeight: "bold",
+    color: "#000",
   },
   headerCellN: {
     width: 40,
