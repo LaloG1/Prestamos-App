@@ -43,14 +43,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Fila 2: Cobros */}
-        <View style={styles.row}>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => router.push('/(tabs)/cobros' as any)}>
-            <FontAwesome name="credit-card" size={32} color="white" />
-            <Text style={styles.buttonText}>Cobros</Text>
-          </TouchableOpacity>
-        </View>
+        
       </View>
     </ParallaxScrollView>
   );
