@@ -529,9 +529,22 @@ export default function ClientesScreen() {
                         ${formatearMonto(item.monto)}
                       </Text>
 
-                      <Text style={[styles.cellPrestamo, { flex: 1 }]}>
-                        {item.estado}
+                      <Text
+                        style={[
+                          styles.cellPrestamo,
+                          { flex: 1 },
+                          {
+                            fontWeight: "bold",
+                            color:
+                              item.estado === "pagado" ? "green" : "orange",
+                          },
+                        ]}
+                      >
+                        {item.estado === "pagado"
+                          ? "✅ Pagado"
+                          : "⏳ Pendiente"}
                       </Text>
+
                       <View style={[styles.actions, { flex: 1 }]}>
                         <TouchableOpacity
                           onPress={async () => {
@@ -581,13 +594,23 @@ export default function ClientesScreen() {
                   <View style={styles.row}>
                     <View style={styles.column}>
                       <Text style={styles.label}>Monto Original:</Text>
-                      <Text style={styles.textInfo}>
+                      <Text
+                        style={[
+                          styles.textInfo,
+                          { color: "green", fontWeight: "bold" },
+                        ]}
+                      >
                         ${formatearMonto(detallePrestamo.monto_original)}
                       </Text>
                     </View>
                     <View style={styles.column}>
                       <Text style={styles.label}>Monto Actualizado:</Text>
-                      <Text style={styles.textInfo}>
+                      <Text
+                        style={[
+                          styles.textInfo,
+                          { color: "#007bff", fontWeight: "bold" },
+                        ]}
+                      >
                         ${formatearMonto(detallePrestamo.monto)}
                       </Text>
                     </View>
@@ -602,7 +625,18 @@ export default function ClientesScreen() {
                     </View>
                     <View style={styles.column}>
                       <Text style={styles.label}>Estado:</Text>
-                      <Text style={styles.textInfo}>
+                      <Text
+                        style={[
+                          styles.textInfo,
+                          {
+                            fontWeight: "bold",
+                            color:
+                              detallePrestamo.estado === "pendiente"
+                                ? "orange"
+                                : "green",
+                          },
+                        ]}
+                      >
                         {detallePrestamo.estado}
                       </Text>
                     </View>
@@ -704,11 +738,13 @@ export default function ClientesScreen() {
                         editable={tipoPago !== "liquidar"} // ❗ Solo editable si NO es "liquidar"
                         placeholder={
                           tipoPago === "interes"
-                            ? `${Number(interesEstimado)}`
+                            ? `${formatearMonto(Number(interesEstimado))}`
                             : tipoPago === "liquidar"
                             ? isNaN(Number(montoActualizado))
                               ? "Monto a liquidar no disponible"
-                              : `Monto a liquidar: $${Number(montoActualizado)}`
+                              : `Monto a liquidar: $${formatearMonto(
+                                  Number(montoActualizado)
+                                )}`
                             : "Ingresa un monto"
                         }
                       />
@@ -788,8 +824,9 @@ export default function ClientesScreen() {
                           {historialPagos.length - index}
                         </Text>
                         <Text style={[styles.cellPrestamo, { flex: 2 }]}>
-                          ${pago.monto}
+                          ${formatearMonto(pago.monto)}
                         </Text>
+
                         <Text style={[styles.cellPrestamo, { flex: 2 }]}>
                           {pago.tipo_pago}
                         </Text>
