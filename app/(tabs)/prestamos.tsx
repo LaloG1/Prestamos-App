@@ -45,6 +45,9 @@ export default function PrestamosScreen() {
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [prestamoSeleccionado, setPrestamoSeleccionado] =
     useState<Prestamo | null>(null);
+  const [acumulados, setAcumulados] = useState<
+    { monto_acumulado: number; created_at: string }[]
+  >([]);
 
   const [tienePendiente, setTienePendiente] = useState(false);
 
@@ -72,8 +75,9 @@ export default function PrestamosScreen() {
     }
   };
 
-  const abrirInfoPrestamo = (prestamo: Prestamo) => {
+  const abrirInfoPrestamo = async (prestamo: Prestamo) => {
     setPrestamoSeleccionado(prestamo);
+    await fetchAcumulados(prestamo.id); // 🔹 aquí se cargan los acumulados
     setInfoModalVisible(true);
   };
 
@@ -86,6 +90,25 @@ export default function PrestamosScreen() {
       await fetchPrestamos();
     })();
   }, []);
+
+  const fetchAcumulados = async (prestamoId: number) => {
+    try {
+      const result = await db.getAllAsync<{
+        monto_acumulado: number;
+        created_at: string;
+      }>(
+        `SELECT monto_acumulado, created_at FROM acumulados WHERE prestamo_id = ? ORDER BY created_at DESC`,
+        [prestamoId]
+      );
+      setAcumulados(result);
+    } catch (error) {
+      console.log("Error al obtener acumulados:", error);
+    }
+  };
+
+  const calcularTotalAcumulado = () => {
+    return acumulados.reduce((total, a) => total + a.monto_acumulado, 0);
+  };
 
   const fetchClientes = async (filter: string = "") => {
     try {
@@ -140,7 +163,13 @@ export default function PrestamosScreen() {
       const prestamoPendiente = await verificarPrestamoPendiente(clienteId);
 
       if (prestamoPendiente) {
-        // Cliente ya tiene préstamo pendiente → Actualizar monto
+        // Cliente ya tiene préstamo pendiente → Insertar en acumulados y actualizar monto
+        await db.runAsync(
+          `INSERT INTO acumulados (prestamo_id, monto_acumulado, created_at)
+         VALUES (?, ?, ?)`,
+          [prestamoPendiente.id, monto, now]
+        );
+
         const nuevoMonto = prestamoPendiente.monto + monto;
         await db.runAsync(
           `UPDATE prestamos SET monto = ?, updated_at = ? WHERE id = ?`,
@@ -148,8 +177,8 @@ export default function PrestamosScreen() {
         );
 
         Alert.alert(
-          "Actualizado",
-          `El cliente ya tiene un préstamo pendiente.\nSe ha sumado el nuevo monto al préstamo existente.`
+          "Monto Acumulado",
+          `El cliente ya tiene un préstamo pendiente.\nEl nuevo monto se ha registrado como acumulado.`
         );
       } else {
         // Cliente sin préstamo pendiente → Insertar nuevo préstamo
@@ -532,6 +561,27 @@ export default function PrestamosScreen() {
                     🗓️ <Text style={styles.infoLabel}>Creado el:</Text>{" "}
                     {new Date(prestamoSeleccionado.created_at).toLocaleString()}
                   </Text>
+                  {acumulados.length > 0 && (
+                    <>
+                      <Text style={[styles.infoLabel, { marginTop: 16 }]}>
+                        🧮 Montos Acumulados:
+                      </Text>
+                      {acumulados.map((a, index) => (
+                        <Text key={index} style={styles.infoItem}>
+                          ➕ ${a.monto_acumulado} -{" "}
+                          {new Date(a.created_at).toLocaleString()}
+                        </Text>
+                      ))}
+                      <Text
+                        style={[
+                          styles.infoItem,
+                          { fontWeight: "bold", color: "#000" },
+                        ]}
+                      >
+                        🔢 Total acumulado: ${calcularTotalAcumulado()}
+                      </Text>
+                    </>
+                  )}
                 </>
               )}
 
