@@ -513,7 +513,7 @@ export default function ClientesScreen() {
                   ListHeaderComponent={
                     <View style={styles.tableHeader}>
                       <Text style={[styles.headerCellPrestamo, { flex: 2 }]}>
-                        Monto
+                        Saldo
                       </Text>
                       <Text style={[styles.headerCellPrestamo, { flex: 1 }]}>
                         Estado

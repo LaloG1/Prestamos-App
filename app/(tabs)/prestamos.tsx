@@ -305,9 +305,6 @@ export default function PrestamosScreen() {
         <View style={styles.actions}>
           {item.estado !== "pagado" ? (
             <>
-              <TouchableOpacity onPress={() => openEditModal(item)}>
-                <Text style={[styles.editBtn, { color: "#007bff" }]}>✏️</Text>
-              </TouchableOpacity>
               <TouchableOpacity onPress={() => confirmarEliminar(item.id)}>
                 <Text style={[styles.deleteBtn, { color: "#dc3545" }]}>🗑️</Text>
               </TouchableOpacity>
