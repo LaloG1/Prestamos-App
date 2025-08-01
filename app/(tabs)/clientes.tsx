@@ -73,6 +73,13 @@ export default function ClientesScreen() {
     "cliente" | "detalle" | "historial"
   >("cliente");
 
+  const formatearMonto = (monto: number): string => {
+    return monto.toLocaleString("es-MX", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+  };
+
   // Formulario pago
   const [mostrarFormularioPago, setMostrarFormularioPago] = useState(false);
   const [tipoPago, setTipoPago] = useState("");
@@ -519,8 +526,9 @@ export default function ClientesScreen() {
                   renderItem={({ item }) => (
                     <View style={[styles.row, { paddingVertical: 6 }]}>
                       <Text style={[styles.cellPrestamo, { flex: 2 }]}>
-                        ${item.monto}
+                        ${formatearMonto(item.monto)}
                       </Text>
+
                       <Text style={[styles.cellPrestamo, { flex: 1 }]}>
                         {item.estado}
                       </Text>
@@ -574,13 +582,13 @@ export default function ClientesScreen() {
                     <View style={styles.column}>
                       <Text style={styles.label}>Monto Original:</Text>
                       <Text style={styles.textInfo}>
-                        ${detallePrestamo.monto_original}
+                        ${formatearMonto(detallePrestamo.monto_original)}
                       </Text>
                     </View>
                     <View style={styles.column}>
                       <Text style={styles.label}>Monto Actualizado:</Text>
                       <Text style={styles.textInfo}>
-                        ${detallePrestamo.monto}
+                        ${formatearMonto(detallePrestamo.monto)}
                       </Text>
                     </View>
                   </View>

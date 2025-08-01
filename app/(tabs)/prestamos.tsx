@@ -61,10 +61,11 @@ export default function PrestamosScreen() {
   const [filtroEstado, setFiltroEstado] = useState<
     "todos" | "pendiente" | "pagado"
   >("todos");
+
   const formatearMonto = (monto: number): string => {
     return monto.toLocaleString("es-MX", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     });
   };
 
@@ -298,7 +299,7 @@ export default function PrestamosScreen() {
       <View style={[styles.row, item.estado === "pagado" && styles.rowPagado]}>
         <Text style={styles.cellN}>{index + 1}</Text>
         <Text style={styles.cell}>{item.cliente_nombre}</Text>
-        <Text style={styles.cell}>{item.monto}</Text>
+        <Text style={styles.cell}>${formatearMonto(item.monto)}</Text>
         <Text style={styles.cell}>{item.interes}%</Text>
         <Text style={styles.cell}>{item.estado}</Text>
         <View style={styles.actions}>
@@ -575,10 +576,21 @@ export default function PrestamosScreen() {
                   </Text>
                   <Text style={styles.infoItem}>
                     🏷️ <Text style={styles.infoLabel}>Estado:</Text>{" "}
-                    {prestamoSeleccionado.estado === "pagado"
-                      ? "✅ Pagado"
-                      : "⏳ Pendiente"}
+                    <Text
+                      style={{
+                        fontWeight: "bold",
+                        color:
+                          prestamoSeleccionado.estado === "pagado"
+                            ? "green"
+                            : "orange",
+                      }}
+                    >
+                      {prestamoSeleccionado.estado === "pagado"
+                        ? "✅ Pagado"
+                        : "⏳ Pendiente"}
+                    </Text>
                   </Text>
+
                   <Text style={styles.infoItem}>
                     🗓️ <Text style={styles.infoLabel}>Creado el:</Text>{" "}
                     {new Date(prestamoSeleccionado.created_at).toLocaleString()}
