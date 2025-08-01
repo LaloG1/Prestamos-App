@@ -1,7 +1,9 @@
 import { openPrestamosDb } from "@/db/prestamos";
 import { Picker } from "@react-native-picker/picker";
+import { useFocusEffect } from "@react-navigation/native";
 import * as SQLite from "expo-sqlite";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -90,6 +92,13 @@ export default function PrestamosScreen() {
       await fetchPrestamos();
     })();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("🟢 Tab de préstamos enfocada. Recargando datos...");
+      fetchPrestamos();
+    }, [])
+  );
 
   const fetchAcumulados = async (prestamoId: number) => {
     try {
