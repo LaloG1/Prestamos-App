@@ -1,5 +1,4 @@
 import { openPrestamosDb } from "@/db/prestamos";
-import { Picker } from "@react-native-picker/picker";
 import { useFocusEffect } from "@react-navigation/native";
 import * as SQLite from "expo-sqlite";
 import { useCallback, useEffect, useState } from "react";
@@ -259,16 +258,6 @@ export default function PrestamosScreen() {
     }
   };
 
-  const openEditModal = (prestamo: Prestamo) => {
-    setEditingPrestamo(prestamo);
-    setClienteId(prestamo.cliente_id);
-    setMontoOriginal(prestamo.monto_original.toString());
-    setInteres(prestamo.interes.toString());
-    setEstado(prestamo.estado);
-    setNotas(prestamo.notas || "");
-    setModalVisible(true);
-  };
-
   const confirmarEliminar = (id: number) => {
     Alert.alert(
       "Eliminar Préstamo",
@@ -285,8 +274,7 @@ export default function PrestamosScreen() {
   };
 
   const cerrarModal = () => {
-    setModalVisible(false);
-    setEditingPrestamo(null);
+    setModalVisible(true);
     setClienteId(null);
     setMontoOriginal("");
     setInteres("");
@@ -305,9 +293,6 @@ export default function PrestamosScreen() {
         <View style={styles.actions}>
           {item.estado !== "pagado" ? (
             <>
-              <TouchableOpacity onPress={() => openEditModal(item)}>
-                <Text style={[styles.editBtn, { color: "#007bff" }]}>✏️</Text>
-              </TouchableOpacity>
               <TouchableOpacity onPress={() => confirmarEliminar(item.id)}>
                 <Text style={[styles.deleteBtn, { color: "#dc3545" }]}>🗑️</Text>
               </TouchableOpacity>
@@ -325,7 +310,6 @@ export default function PrestamosScreen() {
       <View style={styles.container}>
         <TouchableOpacity
           onPress={async () => {
-            setEditingPrestamo(null);
             setClienteId(null);
             setMontoOriginal("");
             setInteres("");
@@ -415,129 +399,110 @@ export default function PrestamosScreen() {
         />
 
         <Modal visible={modalVisible} animationType="slide" transparent={true}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalBox}>
-              <Text style={styles.modalTitle}>
-                {editingPrestamo ? "Editar Préstamo" : "Nuevo Préstamo"}
-              </Text>
+  <View style={styles.modalContainer}>
+    <View style={styles.modalBox}>
+      <Text style={styles.modalTitle}>Nuevo Préstamo</Text>
 
-              {/* Selector Cliente */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Buscar Cliente:</Text>
-                <TextInput
-                  placeholder="Escribe el nombre del cliente..."
-                  value={
-                    clienteId
-                      ? clientes.find((c) => c.id === clienteId)?.nombre ||
-                        searchText
-                      : searchText
+      {/* Selector Cliente */}
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Buscar Cliente:</Text>
+        <TextInput
+          placeholder="Escribe el nombre del cliente..."
+          value={
+            clienteId
+              ? clientes.find((c) => c.id === clienteId)?.nombre || searchText
+              : searchText
+          }
+          onChangeText={(text) => {
+            setSearchText(text);
+            setClienteId(null); // Reinicia selección
+            fetchClientes(text); // Filtra clientes
+          }}
+          style={styles.input}
+        />
+        {searchText.length > 0 && clienteId === null && (
+          <View style={styles.dropdown}>
+            {clientes.map((cliente) => (
+              <TouchableOpacity
+                key={cliente.id}
+                onPress={async () => {
+                  setClienteId(cliente.id);
+                  setSearchText(cliente.nombre);
+                  const pendiente = await verificarPrestamoPendiente(
+                    cliente.id
+                  );
+                  if (pendiente) {
+                    Alert.alert(
+                      "Advertencia",
+                      "Este cliente ya tiene un préstamo pendiente. El nuevo monto se sumará al existente."
+                    );
+                    setTienePendiente(true);
+                    setInteres(pendiente.interes.toString()); // usar el mismo interés
+                  } else {
+                    setTienePendiente(false);
+                    setInteres(""); // permitir escribir uno nuevo
                   }
-                  onChangeText={(text) => {
-                    setSearchText(text);
-                    setClienteId(null); // Reinicia selección
-                    fetchClientes(text); // Filtra clientes
-                  }}
-                  style={styles.input}
-                />
-                {searchText.length > 0 && clienteId === null && (
-                  <View style={styles.dropdown}>
-                    {clientes.map((cliente) => (
-                      <TouchableOpacity
-                        key={cliente.id}
-                        onPress={async () => {
-                          setClienteId(cliente.id);
-                          setSearchText(cliente.nombre);
-                          const pendiente = await verificarPrestamoPendiente(
-                            cliente.id
-                          );
-                          if (pendiente) {
-                            Alert.alert(
-                              "Advertencia",
-                              "Este cliente ya tiene un préstamo pendiente. El nuevo monto se sumará al existente."
-                            );
-                            setTienePendiente(true);
-                            setInteres(pendiente.interes.toString()); // usar el mismo interés
-                          } else {
-                            setTienePendiente(false);
-                            setInteres(""); // permitir escribir uno nuevo
-                          }
-                        }}
-                        style={styles.dropdownItem}
-                      >
-                        <Text>{cliente.nombre}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-
-              <TextInput
-                placeholder="Monto"
-                value={montoOriginal}
-                onChangeText={setMontoOriginal}
-                style={styles.input}
-                keyboardType="decimal-pad"
-              />
-              {tienePendiente ? (
-                <View style={[styles.input, { justifyContent: "center" }]}>
-                  <Text>Interés actual: {interes}%</Text>
-                </View>
-              ) : (
-                <TextInput
-                  placeholder="Interés (%)"
-                  value={interes}
-                  onChangeText={setInteres}
-                  style={styles.input}
-                  keyboardType="decimal-pad"
-                />
-              )}
-
-              {editingPrestamo ? (
-                <View style={styles.pickerContainer}>
-                  <Text style={styles.label}>Estado:</Text>
-                  <Picker
-                    selectedValue={estado}
-                    onValueChange={(itemValue) => setEstado(itemValue)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label="Pendiente" value="pendiente" />
-                    <Picker.Item label="Pagado" value="pagado" />
-                  </Picker>
-                </View>
-              ) : (
-                // Cuando agregas, ocultamos el campo y el estado queda "pendiente" fijo
-                <Text style={{ marginBottom: 12 }}>
-                  Estado: pendiente (por defecto)
-                </Text>
-              )}
-              <TextInput
-                placeholder="Notas"
-                value={notas}
-                onChangeText={setNotas}
-                style={styles.input}
-              />
-
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  onPress={
-                    editingPrestamo ? actualizarPrestamo : agregarPrestamo
-                  }
-                  style={styles.saveBtn}
-                >
-                  <Text style={styles.buttonText}>
-                    {editingPrestamo ? "Actualizar" : "Guardar"}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={cerrarModal}
-                  style={styles.cancelBtn}
-                >
-                  <Text style={styles.buttonText}>Cancelar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                }}
+                style={styles.dropdownItem}
+              >
+                <Text>{cliente.nombre}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        </Modal>
+        )}
+      </View>
+
+      <TextInput
+        placeholder="Monto"
+        value={montoOriginal}
+        onChangeText={setMontoOriginal}
+        style={styles.input}
+        keyboardType="decimal-pad"
+      />
+
+      {tienePendiente ? (
+        <View style={[styles.input, { justifyContent: "center" }]}>
+          <Text>Interés actual: {interes}%</Text>
+        </View>
+      ) : (
+        <TextInput
+          placeholder="Interés (%)"
+          value={interes}
+          onChangeText={setInteres}
+          style={styles.input}
+          keyboardType="decimal-pad"
+        />
+      )}
+
+      <Text style={{ marginBottom: 12 }}>
+        Estado: pendiente (por defecto)
+      </Text>
+
+      <TextInput
+        placeholder="Notas"
+        value={notas}
+        onChangeText={setNotas}
+        style={styles.input}
+      />
+
+      <View style={styles.modalButtons}>
+        <TouchableOpacity
+          onPress={agregarPrestamo}
+          style={styles.saveBtn}
+        >
+          <Text style={styles.buttonText}>Guardar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={cerrarModal}
+          style={styles.cancelBtn}
+        >
+          <Text style={styles.buttonText}>Cancelar</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+</Modal>
+
         <Modal
           visible={infoModalVisible}
           animationType="fade"
