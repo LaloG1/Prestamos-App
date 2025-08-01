@@ -61,6 +61,12 @@ export default function PrestamosScreen() {
   const [filtroEstado, setFiltroEstado] = useState<
     "todos" | "pendiente" | "pagado"
   >("todos");
+  const formatearMonto = (monto: number): string => {
+    return monto.toLocaleString("es-MX", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
 
   const verificarPrestamoPendiente = async (
     clienteId: number
@@ -555,12 +561,14 @@ export default function PrestamosScreen() {
                   </Text>
                   <Text style={styles.infoItem}>
                     💰 <Text style={styles.infoLabel}>Monto Original:</Text> $
-                    {prestamoSeleccionado.monto_original}
+                    {formatearMonto(prestamoSeleccionado.monto_original)}
                   </Text>
+
                   <Text style={styles.infoItem}>
                     💰 <Text style={styles.infoLabel}>Monto Actual:</Text> $
-                    {prestamoSeleccionado.monto}
+                    {formatearMonto(prestamoSeleccionado.monto)}
                   </Text>
+
                   <Text style={styles.infoItem}>
                     📈 <Text style={styles.infoLabel}>Interés:</Text>{" "}
                     {prestamoSeleccionado.interes}%
@@ -581,28 +589,43 @@ export default function PrestamosScreen() {
                         🧮 Montos Acumulados:
                       </Text>
                       {acumulados.map((a, index) => (
-                        <Text key={index} style={styles.infoItem}>
-                          ➕ ${a.monto_acumulado} -{" "}
+                        <Text
+                          key={index}
+                          style={[
+                            styles.infoItem,
+                            { color: "green", fontWeight: "bold" },
+                          ]}
+                        >
+                          ➕ ${formatearMonto(a.monto_acumulado)} -{" "}
                           {new Date(a.created_at).toLocaleString()}
                         </Text>
                       ))}
+
                       <Text
                         style={[
                           styles.infoItem,
                           { fontWeight: "bold", color: "#000" },
                         ]}
                       >
-                        🔢 Total acumulado: ${calcularTotalAcumulado()}
+                        🔢 Total acumulado: $
+                        {calcularTotalAcumulado().toLocaleString("es-MX", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
                       </Text>
-                      <Text
-                        style={[
-                          styles.infoItem,
-                          { fontWeight: "bold", color: "#007bff" },
-                        ]}
-                      >
-                        💵 Total general (Original + Acumulado): $
-                        {prestamoSeleccionado.monto_original +
-                          calcularTotalAcumulado()}
+
+                      <Text style={[styles.infoItem, { fontWeight: "bold" }]}>
+                        💵 Total general (Original + Acumulado):{" "}
+                        <Text style={{ color: "blue" }}>
+                          $
+                          {(
+                            prestamoSeleccionado.monto_original +
+                            calcularTotalAcumulado()
+                          ).toLocaleString("es-MX", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </Text>
                       </Text>
                     </>
                   )}
