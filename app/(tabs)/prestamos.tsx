@@ -535,7 +535,12 @@ export default function PrestamosScreen() {
 
               {prestamoSeleccionado && (
                 <>
-                  <Text style={styles.infoItem}>
+                  <Text
+                    style={[
+                      styles.infoItem,
+                      { fontWeight: "bold", color: "#007bff" },
+                    ]}
+                  >
                     👤 <Text style={styles.infoLabel}>Cliente:</Text>{" "}
                     {prestamoSeleccionado.cliente_nombre}
                   </Text>
@@ -579,6 +584,16 @@ export default function PrestamosScreen() {
                         ]}
                       >
                         🔢 Total acumulado: ${calcularTotalAcumulado()}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.infoItem,
+                          { fontWeight: "bold", color: "#007bff" },
+                        ]}
+                      >
+                        💵 Total general (Original + Acumulado): $
+                        {prestamoSeleccionado.monto_original +
+                          calcularTotalAcumulado()}
                       </Text>
                     </>
                   )}
