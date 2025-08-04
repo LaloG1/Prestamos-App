@@ -16,7 +16,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.eduardovico14.PrestamosApp"
     },
     "web": {
       "bundler": "metro",
@@ -38,6 +39,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "11af4e2e-ca9c-4e51-aad4-2c78c0e0a1b7"
+      }
     }
   }
 }

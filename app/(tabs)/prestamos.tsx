@@ -299,7 +299,7 @@ export default function PrestamosScreen() {
   };
 
   const cerrarModal = () => {
-    setModalVisible(true);
+    setModalVisible(false);
     setClienteId(null);
     setMontoOriginal("");
     setInteres("");
@@ -441,7 +441,7 @@ export default function PrestamosScreen() {
                     clienteId
                       ? clientes.find((c) => c.id === clienteId)?.nombre ||
                         searchText
-                      : searchText
+                      : searchText || undefined
                   }
                   onChangeText={(text) => {
                     setSearchText(text);
@@ -484,7 +484,7 @@ export default function PrestamosScreen() {
 
               <TextInput
                 placeholder="Monto"
-                value={montoOriginal}
+                value={montoOriginal || undefined}
                 onChangeText={setMontoOriginal}
                 style={styles.input}
                 keyboardType="decimal-pad"
@@ -497,7 +497,7 @@ export default function PrestamosScreen() {
               ) : (
                 <TextInput
                   placeholder="Interés (%)"
-                  value={interes}
+                  value={interes || undefined}
                   onChangeText={setInteres}
                   style={styles.input}
                   keyboardType="decimal-pad"
@@ -510,7 +510,7 @@ export default function PrestamosScreen() {
 
               <TextInput
                 placeholder="Notas"
-                value={notas}
+                value={notas || undefined}
                 onChangeText={setNotas}
                 style={styles.input}
               />
