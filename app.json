@@ -43,8 +43,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "11af4e2e-ca9c-4e51-aad4-2c78c0e0a1b7"
+        "projectId": "5dcead8f-4c51-46cf-ad17-1e25ff95d7b4"
       }
-    }
+    },
+    "owner": "anavico14"
   }
 }

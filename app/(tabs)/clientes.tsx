@@ -525,7 +525,16 @@ export default function ClientesScreen() {
                   }
                   renderItem={({ item }) => (
                     <View style={[styles.row, { paddingVertical: 6 }]}>
-                      <Text style={[styles.cellPrestamo, { flex: 2 }]}>
+                      <Text
+                        style={[
+                          styles.cellPrestamo,
+                          { flex: 2 },
+                          {
+                            fontWeight: "bold",
+                            color: item.estado === "pagado" ? "green" : "blue",
+                          },
+                        ]}
+                      >
                         ${formatearMonto(item.monto)}
                       </Text>
 

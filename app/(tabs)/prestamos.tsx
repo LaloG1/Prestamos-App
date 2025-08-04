@@ -482,6 +482,7 @@ export default function PrestamosScreen() {
                 )}
               </View>
 
+              <Text style={styles.label}>Monto</Text>
               <TextInput
                 placeholder="Monto"
                 value={montoOriginal || undefined}
@@ -490,6 +491,7 @@ export default function PrestamosScreen() {
                 keyboardType="decimal-pad"
               />
 
+              <Text style={styles.label}>Interés</Text>
               {tienePendiente ? (
                 <View style={[styles.input, { justifyContent: "center" }]}>
                   <Text>Interés actual: {interes}%</Text>
@@ -508,6 +510,7 @@ export default function PrestamosScreen() {
                 Estado: pendiente (por defecto)
               </Text>
 
+              <Text style={styles.label}>Notas</Text>
               <TextInput
                 placeholder="Notas"
                 value={notas || undefined}

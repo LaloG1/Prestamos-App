@@ -21,7 +21,7 @@ export default function HomeScreen() {
       }
     >
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">E G M - Préstamos!</ThemedText>
+        <ThemedText type="title">edoiaza - Préstamos!</ThemedText>
       </ThemedView>
 
       <View style={styles.buttonsContainer}>
